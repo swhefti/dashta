@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "Bash(npx tsc:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "Bash(ls /Users/samuel/Documents/DashTA/.env*)",
+      "mcp__supabase__apply_migration",
+      "Bash(curl -s 'http://localhost:3003/api/scores?horizon=3')",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'run_date: {d[\\\\\"run_date\\\\\"]}, count: {d[\\\\\"count\\\\\"]}'\\); s=d['scores'][0]; print\\(f'first: {s[\\\\\"ticker\\\\\"]} risk={s[\\\\\"risk_score\\\\\"]} upward={s[\\\\\"upward_probability_score\\\\\"]} cap={s[\\\\\"market_cap\\\\\"]}'\\)\")",
+      "Bash(curl -s 'http://localhost:3003/')",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' 'http://localhost:3003/')"
+    ]
+  }
+}
