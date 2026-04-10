@@ -17,6 +17,9 @@ export interface ScoresData {
     with_fragility: number;
   };
   factor_completeness?: number;
+  source_freshness?: Record<string, string | null>;
+  run_quality?: string;
+  confidence_distribution?: { high: number; medium: number; low: number };
   available?: boolean;
   error?: string;
   scores?: any[];

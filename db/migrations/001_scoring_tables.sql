@@ -25,6 +25,26 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- Freshness + quality columns
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='scoring_runs' AND column_name='source_freshness') THEN
+    ALTER TABLE scoring_runs ADD COLUMN source_freshness JSONB DEFAULT '{}';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='scoring_runs' AND column_name='run_quality') THEN
+    ALTER TABLE scoring_runs ADD COLUMN run_quality TEXT DEFAULT 'healthy' CHECK (run_quality IN ('healthy','degraded','blocked'));
+  END IF;
+END $$;
+
+-- Confidence columns on ticker_scores
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ticker_scores' AND column_name='confidence') THEN
+    ALTER TABLE ticker_scores ADD COLUMN confidence NUMERIC(5,2);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ticker_scores' AND column_name='confidence_label') THEN
+    ALTER TABLE ticker_scores ADD COLUMN confidence_label TEXT;
+  END IF;
+END $$;
+
 DROP INDEX IF EXISTS idx_scoring_runs_date_horizon;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_scoring_runs_date_horizon
   ON scoring_runs(run_date, time_horizon_months, scoring_mode);

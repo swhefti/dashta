@@ -63,7 +63,8 @@ export function TickerTooltip({ x, y, data }: TickerTooltipProps) {
         <Row label="Risk" value={data.risk_score?.toFixed(1)} color="var(--accent-danger)" />
         <Row label="Upward" value={data.upward_probability_score?.toFixed(1)} color="var(--accent-etf)" />
         <Row label="Price" value={formatPrice(data.current_price)} />
-        <Row label="Cap" value={formatCap(data.market_cap)} />
+        <Row label="Conf" value={data.confidence != null ? `${Math.round(Number(data.confidence))} ${data.confidence_label ?? ''}` : '--'}
+          color={data.confidence_label === 'high' ? 'var(--accent-etf)' : data.confidence_label === 'medium' ? 'var(--accent-crypto)' : 'var(--text-muted)'} />
       </div>
     </div>
   );

@@ -94,11 +94,10 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             </button>
           </div>
 
-          <div className="flex gap-4 mt-3">
+          <div className="flex gap-3 mt-3">
             <MetricChip label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
             <MetricChip label="Mkt Cap" value={formatCap(data.market_cap)} />
-            <MetricChip label="Factors" value={`${availCount}/11`}
-              color={availCount >= 9 ? 'var(--accent-etf)' : availCount >= 6 ? 'var(--text-secondary)' : 'var(--accent-crypto)'} />
+            <ConfidenceBadge score={data.confidence} label={data.confidence_label} />
           </div>
         </div>
 
@@ -196,6 +195,32 @@ function ScoreBar({ label, value, barClass }: { label: string; value?: number | 
           />
         </div>
       )}
+    </div>
+  );
+}
+
+const CONF_COLORS: Record<string, string> = {
+  high: 'var(--accent-etf)',
+  medium: 'var(--accent-crypto)',
+  low: 'var(--accent-danger)',
+};
+
+function ConfidenceBadge({ score, label }: { score?: number; label?: string }) {
+  const s = score ?? 0;
+  const l = label ?? 'low';
+  const color = CONF_COLORS[l] ?? CONF_COLORS.low;
+  return (
+    <div className="flex-1 rounded-md px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+      <div className="text-[9px] uppercase tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+        Confidence
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+        <span className="text-[13px] font-medium" style={{ fontFamily: 'var(--font-mono)', color }}>
+          {s}
+        </span>
+        <span className="text-[9px] uppercase" style={{ color }}>{l}</span>
+      </div>
     </div>
   );
 }
