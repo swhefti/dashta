@@ -24,6 +24,8 @@ export default function DashboardPage() {
   ) ?? [];
 
   const tickerCount = filteredData.length;
+  const noData = data?.available === false;
+  const fc = data?.factor_completeness ?? 0;
 
   return (
     <main className="relative flex flex-col h-screen">
@@ -38,7 +40,6 @@ export default function DashboardPage() {
       {/* Top bar */}
       <header className="relative z-20 flex items-center justify-between px-6 py-3 border-b"
         style={{ borderColor: 'var(--border-subtle)', background: 'rgba(6, 8, 13, 0.85)', backdropFilter: 'blur(16px)' }}>
-        {/* Left: Brand */}
         <div className="flex items-center gap-4">
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
@@ -50,20 +51,34 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="w-px h-5" style={{ background: 'var(--border-subtle)' }} />
+          {/* Run metadata */}
           <div className="flex items-center gap-2">
             {data?.run_date && (
               <span className="text-[11px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
                 {data.run_date}
               </span>
             )}
-            <span className="text-[10px] px-1.5 py-0.5 rounded"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', background: 'var(--border-subtle)' }}>
-              {tickerCount} assets
-            </span>
+            {data?.available && (
+              <>
+                <span className="text-[10px] px-1.5 py-0.5 rounded"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', background: 'var(--border-subtle)' }}>
+                  {tickerCount} assets
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: fc >= 80 ? 'var(--accent-etf)' : fc >= 60 ? 'var(--accent-crypto)' : 'var(--accent-danger)',
+                    background: 'var(--border-subtle)',
+                  }}
+                  title={`${data.coverage?.with_price ?? 0} with price, ${data.coverage?.with_sentiment ?? 0} with sentiment, ${data.coverage?.with_fundamental_value ?? 0} with fundamentals`}
+                >
+                  {fc}% coverage
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Right: Controls */}
         <div className="flex items-center gap-3">
           <SearchBar onSearch={setSearchTicker} />
           <div className="w-px h-5" style={{ background: 'var(--border-subtle)' }} />
@@ -94,11 +109,25 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-        {!isLoading && !error && (
+        {!isLoading && !error && noData && (
+          <div className="flex items-center justify-center h-full">
+            <div className="glass rounded-lg px-6 py-5 max-w-md text-center space-y-2">
+              <div className="text-sm font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                No {horizon}mo scores available
+              </div>
+              <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                The scoring pipeline has not been run for the {horizon}-month horizon yet.
+                Run <code className="px-1 py-0.5 rounded" style={{ background: 'var(--border-subtle)' }}>npm run score:{horizon}mo</code> to generate scores.
+              </div>
+            </div>
+          </div>
+        )}
+        {!isLoading && !error && !noData && (
           <BubbleChart
             scores={filteredData}
             highlightTicker={searchTicker}
             horizon={horizon}
+            mode={mode}
           />
         )}
       </div>
@@ -113,7 +142,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <span className="text-[10px]"
             style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-            x: risk / y: upward probability / size: market cap / mode: {mode}
+            x: risk / y: upward probability / size: market cap / {mode}
           </span>
         </div>
       </footer>

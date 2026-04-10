@@ -1,5 +1,7 @@
 // src/scoring/risk/beta.ts
-// Beta to SPY: systematic market risk measure.
+// Beta: systematic market risk measure.
+// Stocks/ETFs: beta vs SPY.
+// Crypto: beta vs BTC (the orchestrator passes the appropriate benchmark).
 // beta = cov(asset_returns, benchmark_returns) / var(benchmark_returns)
 
 import type { PriceBar } from '../../shared/types';
@@ -7,7 +9,6 @@ import { logReturn } from '../../shared/utils';
 
 /**
  * Build a date → log-return map from a price series.
- * Skips the first bar (no prior close to compute return from).
  */
 function returnsByDate(prices: PriceBar[]): Map<string, number> {
   const map = new Map<string, number>();
@@ -22,17 +23,18 @@ function returnsByDate(prices: PriceBar[]): Map<string, number> {
  * Only uses dates present in both series (inner join).
  *
  * @param assetPrices - Asset daily bars, sorted oldest → newest
- * @param benchmarkPrices - Benchmark (e.g. SPY) daily bars
- * @returns Beta coefficient, or 1.0 if insufficient overlapping data (<5 days)
+ * @param benchmarkPrices - Benchmark daily bars (SPY for stocks/ETFs, BTC for crypto)
+ * @returns Beta coefficient, or 1.0 if insufficient overlapping data (<10 days)
  */
 export function calculateBeta(
   assetPrices: PriceBar[],
   benchmarkPrices: PriceBar[]
 ): number {
+  if (assetPrices.length < 2 || benchmarkPrices.length < 2) return 1.0;
+
   const assetReturns = returnsByDate(assetPrices);
   const benchReturns = returnsByDate(benchmarkPrices);
 
-  // Align on common dates
   const pairedAsset: number[] = [];
   const pairedBench: number[] = [];
   for (const [date, ar] of assetReturns) {
@@ -43,7 +45,8 @@ export function calculateBeta(
     }
   }
 
-  if (pairedAsset.length < 5) return 1.0; // not enough data, assume market beta
+  // Require at least 10 overlapping days for meaningful beta
+  if (pairedAsset.length < 10) return 1.0;
 
   const n = pairedAsset.length;
   const meanA = pairedAsset.reduce((s, v) => s + v, 0) / n;
@@ -58,7 +61,6 @@ export function calculateBeta(
     varB += db * db;
   }
 
-  if (varB === 0) return 1.0; // benchmark has zero variance (shouldn't happen)
-
+  if (varB === 0) return 1.0;
   return cov / varB;
 }

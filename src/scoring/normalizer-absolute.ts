@@ -81,12 +81,13 @@ export function absoluteNormalizeRisk(
   const result = new Map<string, Record<string, number>>();
 
   for (const [ticker, raw] of rawScores) {
+    const M = -999; // RAW_MISSING sentinel
     result.set(ticker, {
-      volatility: absVolatility(raw.volatility),
-      max_drawdown: absMaxDrawdown(raw.max_drawdown),
-      beta: absBeta(raw.beta),
-      liquidity: absLiquidity(raw.liquidity === -1 ? null : raw.liquidity),
-      fundamental_fragility: absFragility(raw.fundamental_fragility),
+      volatility: raw.volatility === M ? M : absVolatility(raw.volatility),
+      max_drawdown: raw.max_drawdown === M ? M : absMaxDrawdown(raw.max_drawdown),
+      beta: raw.beta === M ? M : absBeta(raw.beta),
+      liquidity: raw.liquidity === M ? M : absLiquidity(raw.liquidity),
+      fundamental_fragility: raw.fundamental_fragility === M ? M : absFragility(raw.fundamental_fragility),
     });
   }
 
@@ -102,13 +103,14 @@ export function absoluteNormalizeUpward(
   const result = new Map<string, Record<string, number>>();
 
   for (const [ticker, raw] of rawScores) {
+    const M = -999;
     result.set(ticker, {
-      trend_momentum: absMomentum(raw.trend_momentum),
-      mean_reversion: absReversion(raw.mean_reversion),
-      fundamental_value: absFundamentalValue(raw.fundamental_value),
-      sentiment: absSentiment(raw.sentiment),
-      macro_regime: absRegime(raw.macro_regime),
-      seasonal: absSeasonal(raw.seasonal),
+      trend_momentum: raw.trend_momentum === M ? M : absMomentum(raw.trend_momentum),
+      mean_reversion: raw.mean_reversion === M ? M : absReversion(raw.mean_reversion),
+      fundamental_value: raw.fundamental_value === M ? M : absFundamentalValue(raw.fundamental_value),
+      sentiment: raw.sentiment === M ? M : absSentiment(raw.sentiment),
+      macro_regime: raw.macro_regime === M ? M : absRegime(raw.macro_regime),
+      seasonal: raw.seasonal === M ? M : absSeasonal(raw.seasonal),
     });
   }
 

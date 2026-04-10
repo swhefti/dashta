@@ -11,7 +11,7 @@ import { COINGECKO_IDS, ETF_AUM_FALLBACK } from '../shared/constants';
 
 export interface MarketCapRecord {
   market_cap: number | null;
-  current_price: number;
+  current_price: number | null;
   company_name: string;
 }
 
@@ -138,10 +138,10 @@ export async function loadMarketCaps(
     nameMap.set(t.symbol, t.name);
   }
 
-  // 6. Assemble results
+  // 6. Assemble results — include ALL tickers, even those missing quotes.
+  // Use null for current_price when no quote data exists (don't fake 0).
   for (const t of tickers) {
-    const price = latestPrice.get(t.symbol);
-    if (price == null) continue;
+    const price = latestPrice.get(t.symbol) ?? null;
 
     let marketCap: number | null = null;
     if (t.asset_class === 'stock') {
@@ -152,9 +152,16 @@ export async function loadMarketCaps(
       marketCap = ETF_AUM_FALLBACK[t.symbol] ?? null;
     }
 
+    // For stocks without market_quotes, try to derive price from latest price_history close
+    let finalPrice = price;
+    if (finalPrice == null && t.asset_class === 'stock') {
+      // Price will be sourced from price_history by the caller if needed
+      finalPrice = null;
+    }
+
     result.set(t.symbol, {
       market_cap: marketCap,
-      current_price: price,
+      current_price: finalPrice,
       company_name: nameMap.get(t.symbol) ?? t.symbol,
     });
   }

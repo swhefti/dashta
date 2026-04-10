@@ -15,9 +15,10 @@ interface BubbleChartProps {
   scores: any[];
   highlightTicker: string | null;
   horizon: number;
+  mode?: string;
 }
 
-export function BubbleChart({ scores, highlightTicker, horizon }: BubbleChartProps) {
+export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percentile' }: BubbleChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: any } | null>(null);
@@ -231,7 +232,7 @@ export function BubbleChart({ scores, highlightTicker, horizon }: BubbleChartPro
       <svg ref={svgRef} className="w-full h-full" />
       {tooltip && <TickerTooltip {...tooltip} />}
       {selectedTicker && (
-        <TickerDetail data={selectedTicker} onClose={() => setSelectedTicker(null)} />
+        <TickerDetail data={selectedTicker} horizon={horizon} mode={mode} onClose={() => setSelectedTicker(null)} />
       )}
     </div>
   );
