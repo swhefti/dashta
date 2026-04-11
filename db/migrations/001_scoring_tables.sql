@@ -103,10 +103,31 @@ CREATE TABLE IF NOT EXISTS scoring_weights (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_scoring_weights_unique
   ON scoring_weights(time_horizon_months, score_type, component);
 
+-- Ticker explanations
+CREATE TABLE IF NOT EXISTS ticker_explanations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker TEXT NOT NULL,
+  time_horizon_months INTEGER NOT NULL,
+  scoring_mode TEXT NOT NULL,
+  latest_scoring_run_id UUID REFERENCES scoring_runs(id),
+  explanation_text TEXT NOT NULL,
+  explanation_version INTEGER NOT NULL DEFAULT 1,
+  risk_score_snapshot NUMERIC(5,2),
+  upward_score_snapshot NUMERIC(5,2),
+  confidence_snapshot NUMERIC(5,2),
+  run_quality_snapshot TEXT,
+  driver_signature TEXT,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ticker_explanations_unique
+  ON ticker_explanations(ticker, time_horizon_months, scoring_mode);
+
 -- RLS
 ALTER TABLE scoring_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ticker_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scoring_weights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticker_explanations ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow anon read scoring_runs') THEN
@@ -117,5 +138,8 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow anon read scoring_weights') THEN
     CREATE POLICY "Allow anon read scoring_weights" ON scoring_weights FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow anon read ticker_explanations') THEN
+    CREATE POLICY "Allow anon read ticker_explanations" ON ticker_explanations FOR SELECT USING (true);
   END IF;
 END $$;

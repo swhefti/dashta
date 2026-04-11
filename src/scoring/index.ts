@@ -11,6 +11,7 @@ import { absoluteNormalizeRisk, absoluteNormalizeUpward } from './normalizer-abs
 import { composeScore, FACTOR_UNAVAILABLE } from './composer';
 import { checkFreshness, type RunQuality } from './freshness';
 import { computeConfidence } from './confidence';
+import { generateExplanation, computeDriverSignature, shouldRefreshExplanation } from './explanations';
 
 import { loadAssets } from '../data/asset-loader';
 import { loadPrices, loadFullPriceHistory } from '../data/price-loader';
@@ -168,6 +169,101 @@ async function writeScores(
   }
 }
 
+/**
+ * Generate/update ticker explanations. Only refreshes when a strong change is detected.
+ */
+async function updateExplanations(
+  supabase: ReturnType<typeof getServiceClient>,
+  runId: string,
+  tickers: Ticker[],
+  horizonMonths: number,
+  mode: ScoringMode,
+  normRisk: Map<string, Record<string, number>>,
+  normUpward: Map<string, Record<string, number>>,
+  riskWeights: ScoringWeight[],
+  upwardWeights: ScoringWeight[],
+  marketCaps: Map<string, MarketCapRecord>,
+  runQuality: RunQuality
+) {
+  // Load existing explanations for comparison
+  const { data: existing } = await supabase
+    .from('ticker_explanations')
+    .select('ticker, driver_signature, risk_score_snapshot, upward_score_snapshot')
+    .eq('time_horizon_months', horizonMonths)
+    .eq('scoring_mode', mode);
+
+  const existingMap = new Map<string, { sig: string | null; risk: number | null; upward: number | null }>();
+  if (existing) {
+    for (const row of existing) {
+      existingMap.set(row.ticker, {
+        sig: row.driver_signature,
+        risk: row.risk_score_snapshot != null ? Number(row.risk_score_snapshot) : null,
+        upward: row.upward_score_snapshot != null ? Number(row.upward_score_snapshot) : null,
+      });
+    }
+  }
+
+  let refreshed = 0;
+  let skipped = 0;
+
+  for (const ticker of tickers) {
+    const sym = ticker.symbol;
+    const riskSub = normRisk.get(sym)!;
+    const upwardSub = normUpward.get(sym)!;
+    const riskScore = composeScore(riskSub, riskWeights);
+    const upwardScore = composeScore(upwardSub, upwardWeights);
+    const conf = computeConfidence(riskSub, upwardSub, ticker.asset_class, runQuality);
+    const capData = marketCaps.get(sym);
+
+    const newSig = computeDriverSignature({
+      riskScore, upwardScore, confidence: conf.score,
+      confidenceLabel: conf.label, runQuality,
+      riskSubs: riskSub, upwardSubs: upwardSub,
+    });
+
+    const old = existingMap.get(sym);
+    if (!shouldRefreshExplanation(old?.sig ?? null, newSig, old?.risk ?? null, riskScore, old?.upward ?? null, upwardScore)) {
+      // Just update the run reference, don't regenerate text
+      await supabase.from('ticker_explanations')
+        .update({ latest_scoring_run_id: runId, updated_at: new Date().toISOString() })
+        .eq('ticker', sym).eq('time_horizon_months', horizonMonths).eq('scoring_mode', mode);
+      skipped++;
+      continue;
+    }
+
+    const explanation = generateExplanation({
+      ticker: sym,
+      companyName: capData?.company_name ?? ticker.name,
+      assetClass: ticker.asset_class,
+      riskScore, upwardScore,
+      riskSubs: riskSub, upwardSubs: upwardSub,
+      confidence: conf.score, confidenceLabel: conf.label,
+      runQuality,
+    });
+
+    const version = old ? ((old as any).version ?? 1) + 1 : 1;
+
+    await supabase.from('ticker_explanations').upsert({
+      ticker: sym,
+      time_horizon_months: horizonMonths,
+      scoring_mode: mode,
+      latest_scoring_run_id: runId,
+      explanation_text: explanation,
+      explanation_version: version,
+      risk_score_snapshot: riskScore,
+      upward_score_snapshot: upwardScore,
+      confidence_snapshot: conf.score,
+      run_quality_snapshot: runQuality,
+      driver_signature: newSig,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'ticker,time_horizon_months,scoring_mode' });
+
+    refreshed++;
+  }
+
+  console.log(`Explanations: ${refreshed} refreshed, ${skipped} unchanged`);
+}
+
 export async function runScoring(horizonMonths: number): Promise<void> {
   const supabase = getServiceClient();
   const lookbackDays = getLookbackDays(horizonMonths);
@@ -276,6 +372,10 @@ export async function runScoring(horizonMonths: number): Promise<void> {
     const abs = normalizeAbsolute(rawRisk, rawUpward);
     await writeScores(supabase, runAbsolute.id, tickers, horizonMonths, 'absolute', today, abs.normRisk, abs.normUpward, riskWeights, upwardWeights, marketCaps, freshnessResult.quality);
     console.log(`Absolute scores written`);
+
+    // Generate/update explanations (only for percentile mode — primary view)
+    await updateExplanations(supabase, runPercentile.id, tickers, horizonMonths, 'percentile',
+      pct.normRisk, pct.normUpward, riskWeights, upwardWeights, marketCaps, freshnessResult.quality);
 
     for (const run of [runPercentile, runAbsolute]) {
       await supabase.from('scoring_runs').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', run.id);

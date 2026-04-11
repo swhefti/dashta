@@ -37,6 +37,25 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Load explanations for these tickers
+  const { data: explanations } = await supabase
+    .from('ticker_explanations')
+    .select('ticker, explanation_text')
+    .eq('time_horizon_months', horizon)
+    .eq('scoring_mode', mode);
+
+  const explMap = new Map<string, string>();
+  if (explanations) {
+    for (const e of explanations) explMap.set(e.ticker, e.explanation_text);
+  }
+
+  // Attach explanation to each score
+  if (scores) {
+    for (const s of scores) {
+      (s as any).explanation = explMap.get((s as any).ticker) ?? null;
+    }
+  }
+
   const all = scores ?? [];
   const factorFields = [
     'volatility_score', 'max_drawdown_score', 'beta_score', 'liquidity_risk_score',
