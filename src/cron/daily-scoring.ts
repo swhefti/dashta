@@ -10,16 +10,21 @@ async function main() {
   console.log(`Starting daily scoring for horizons: ${horizons.join(', ')} months`);
   console.log(`Date: ${new Date().toISOString()}`);
 
+  const failures: number[] = [];
   for (const horizon of horizons) {
     try {
       await runScoring(horizon);
     } catch (error) {
       console.error(`Failed for horizon ${horizon}mo:`, error);
-      // Continue with other horizons even if one fails
+      failures.push(horizon);
     }
   }
 
   console.log('\nAll scoring runs complete.');
+  if (failures.length > 0) {
+    console.error(`Scoring failed for horizons: ${failures.join(', ')}`);
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {
