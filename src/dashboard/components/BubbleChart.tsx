@@ -83,17 +83,17 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
       g.append('line')
         .attr('x1', xScale(i)).attr('x2', xScale(i))
         .attr('y1', margin.top).attr('y2', height - margin.bottom)
-        .attr('stroke', 'rgba(255,255,255,0.14)').attr('stroke-width', 0.5);
+        .attr('stroke', 'rgba(255,255,255,0.08)').attr('stroke-width', 0.5);
       g.append('line')
         .attr('x1', margin.left).attr('x2', width - margin.right)
         .attr('y1', yScale(i)).attr('y2', yScale(i))
-        .attr('stroke', 'rgba(255,255,255,0.14)').attr('stroke-width', 0.5);
+        .attr('stroke', 'rgba(255,255,255,0.08)').attr('stroke-width', 0.5);
     }
 
     // Major grid at 25, 50, 75
     [25, 50, 75].forEach((v) => {
       const isCenter = v === 50;
-      const opacity = isCenter ? 0.22 : 0.16;
+      const opacity = isCenter ? 0.16 : 0.10;
       g.append('line')
         .attr('x1', xScale(v)).attr('x2', xScale(v))
         .attr('y1', margin.top).attr('y2', height - margin.bottom)
@@ -132,29 +132,29 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
     const xAxis = g.append('g')
       .attr('transform', `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(xScale).ticks(10).tickSize(-height + margin.top + margin.bottom).tickPadding(8));
-    xAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.18)');
+    xAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.12)');
     xAxis.selectAll('.tick line').attr('stroke', 'none');
-    xAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.32)').attr('font-size', 9);
+    xAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.26)').attr('font-size', 9);
 
     const yAxis = g.append('g')
       .attr('transform', `translate(${margin.left},0)`)
       .call(d3.axisLeft(yScale).ticks(10).tickSize(-width + margin.left + margin.right).tickPadding(8));
-    yAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.18)');
+    yAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.12)');
     yAxis.selectAll('.tick line').attr('stroke', 'none');
-    yAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.32)').attr('font-size', 9);
+    yAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.26)').attr('font-size', 9);
 
     // Axis labels
     g.append('text')
       .attr('x', width / 2).attr('y', height - 6)
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.30)')
+      .attr('fill', 'rgba(255,255,255,0.24)')
       .attr('font-size', 10).attr('letter-spacing', '0.15em')
       .text('RISK SCORE');
     g.append('text')
       .attr('x', -height / 2).attr('y', 12)
       .attr('transform', 'rotate(-90)')
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.30)')
+      .attr('fill', 'rgba(255,255,255,0.24)')
       .attr('font-size', 10).attr('letter-spacing', '0.15em')
       .text('UPWARD PROBABILITY');
 
