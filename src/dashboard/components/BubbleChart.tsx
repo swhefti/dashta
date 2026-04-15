@@ -43,8 +43,8 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
     const bgGrad = defs.append('radialGradient')
       .attr('id', 'chart-bg')
       .attr('cx', '30%').attr('cy', '30%').attr('r', '70%');
-    bgGrad.append('stop').attr('offset', '0%').attr('stop-color', '#0f1520').attr('stop-opacity', 1);
-    bgGrad.append('stop').attr('offset', '100%').attr('stop-color', '#06080d').attr('stop-opacity', 1);
+    bgGrad.append('stop').attr('offset', '0%').attr('stop-color', '#181f2c').attr('stop-opacity', 1);
+    bgGrad.append('stop').attr('offset', '100%').attr('stop-color', '#0d1017').attr('stop-opacity', 1);
 
     // Glow filter for highlighted bubbles
     const glow = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
@@ -83,17 +83,17 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
       g.append('line')
         .attr('x1', xScale(i)).attr('x2', xScale(i))
         .attr('y1', margin.top).attr('y2', height - margin.bottom)
-        .attr('stroke', 'rgba(255,255,255,0.025)').attr('stroke-width', 0.5);
+        .attr('stroke', 'rgba(255,255,255,0.14)').attr('stroke-width', 0.5);
       g.append('line')
         .attr('x1', margin.left).attr('x2', width - margin.right)
         .attr('y1', yScale(i)).attr('y2', yScale(i))
-        .attr('stroke', 'rgba(255,255,255,0.025)').attr('stroke-width', 0.5);
+        .attr('stroke', 'rgba(255,255,255,0.14)').attr('stroke-width', 0.5);
     }
 
     // Major grid at 25, 50, 75
     [25, 50, 75].forEach((v) => {
       const isCenter = v === 50;
-      const opacity = isCenter ? 0.10 : 0.05;
+      const opacity = isCenter ? 0.22 : 0.16;
       g.append('line')
         .attr('x1', xScale(v)).attr('x2', xScale(v))
         .attr('y1', margin.top).attr('y2', height - margin.bottom)
@@ -132,29 +132,29 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
     const xAxis = g.append('g')
       .attr('transform', `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(xScale).ticks(10).tickSize(-height + margin.top + margin.bottom).tickPadding(8));
-    xAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.06)');
+    xAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.18)');
     xAxis.selectAll('.tick line').attr('stroke', 'none');
-    xAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.2)').attr('font-size', 9);
+    xAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.32)').attr('font-size', 9);
 
     const yAxis = g.append('g')
       .attr('transform', `translate(${margin.left},0)`)
       .call(d3.axisLeft(yScale).ticks(10).tickSize(-width + margin.left + margin.right).tickPadding(8));
-    yAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.06)');
+    yAxis.select('.domain').attr('stroke', 'rgba(255,255,255,0.18)');
     yAxis.selectAll('.tick line').attr('stroke', 'none');
-    yAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.2)').attr('font-size', 9);
+    yAxis.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.32)').attr('font-size', 9);
 
     // Axis labels
     g.append('text')
       .attr('x', width / 2).attr('y', height - 6)
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.18)')
+      .attr('fill', 'rgba(255,255,255,0.30)')
       .attr('font-size', 10).attr('letter-spacing', '0.15em')
       .text('RISK SCORE');
     g.append('text')
       .attr('x', -height / 2).attr('y', 12)
       .attr('transform', 'rotate(-90)')
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.18)')
+      .attr('fill', 'rgba(255,255,255,0.30)')
       .attr('font-size', 10).attr('letter-spacing', '0.15em')
       .text('UPWARD PROBABILITY');
 
