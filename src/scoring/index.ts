@@ -296,7 +296,7 @@ export async function runScoring(horizonMonths: number): Promise<void> {
         error_message: `Blocked: ${freshnessResult.issues.join('; ')}`,
       }, { onConflict: 'run_date,time_horizon_months,scoring_mode' });
     }
-    return;
+    throw new Error(`Run blocked by freshness gating: ${freshnessResult.issues.join('; ')}`);
   }
 
   const runPercentile = await createScoringRun(supabase, today, horizonMonths, 'percentile', freshnessResult.sources, freshnessResult.quality);

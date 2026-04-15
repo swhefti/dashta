@@ -39,3 +39,11 @@ jobs:
           else
             npx tsx src/cron/daily-scoring.ts --horizon=$HORIZON
           fi
+
+      - name: Verify runs landed in Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          HORIZON="${{ github.event.inputs.horizon || 'all' }}"
+          npx tsx scripts/verify-runs.ts --horizon=$HORIZON
