@@ -79,3 +79,57 @@ export function useTickerHistory(ticker: string | null, horizon: number, mode: s
 
   return { history, isLoading };
 }
+
+export interface BriefTicker {
+  ticker: string;
+  company_name: string | null;
+  asset_class: string;
+  market_cap: number | null;
+  current: { risk: number; upward: number; confidence: number | null; confidenceLabel: string | null };
+  daily: { upwardDelta: number | null; riskDelta: number | null };
+  weekly: { upwardDelta: number | null; riskDelta: number | null };
+  significance: number;
+}
+
+export interface BriefData {
+  available: boolean;
+  horizon?: number;
+  mode?: string;
+  runs?: {
+    latest: { run_date: string; run_quality: string | null };
+    previous: { run_date: string } | null;
+    weekly: { run_date: string } | null;
+  };
+  headline?: string;
+  sub?: string | null;
+  stats?: {
+    improvedCount: number;
+    weakenedCount: number;
+    totalWithDelta: number;
+    avgUpwardDelta: number;
+    avgRiskDelta: number;
+  };
+  cards?: {
+    improved: BriefTicker[];
+    riskier: BriefTicker[];
+    largeCap: BriefTicker[];
+  };
+}
+
+export function useBrief(horizon: number, mode: string): { data: BriefData | null; isLoading: boolean; error: string | null } {
+  const [data, setData] = useState<BriefData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+    fetch(`/api/brief?horizon=${horizon}&mode=${mode}`)
+      .then((res) => res.json())
+      .then((d: BriefData) => setData(d))
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, [horizon, mode]);
+
+  return { data, isLoading, error };
+}

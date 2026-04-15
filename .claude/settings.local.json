@@ -38,7 +38,11 @@
       "Bash(gh secret *)",
       "Bash(vercel env *)",
       "Bash(gh workflow *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(npm run *)",
+      "Bash(cat next.config.*)",
+      "Bash(curl -sf http://localhost:3000/api/brief?horizon=3)",
+      "Read(//tmp/**)"
     ]
   }
 }

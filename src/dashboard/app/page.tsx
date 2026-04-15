@@ -6,7 +6,8 @@ import { HorizonSelector } from '../components/HorizonSelector';
 import { AssetFilter } from '../components/AssetFilter';
 import { SearchBar } from '../components/SearchBar';
 import { ModeSelector } from '../components/ModeSelector';
-import { useScores } from '../lib/hooks';
+import { DailyBrief } from '../components/DailyBrief';
+import { useScores, useBrief } from '../lib/hooks';
 import type { AssetClass } from '../../shared/types';
 
 const QUALITY_STYLES: Record<string, { color: string; label: string }> = {
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const [searchTicker, setSearchTicker] = useState<string | null>(null);
 
   const { data, isLoading, error } = useScores(horizon, mode);
+  const { data: brief, isLoading: briefLoading } = useBrief(horizon, mode);
 
   const filteredData = data?.scores?.filter((s: any) => activeClasses.has(s.asset_class)) ?? [];
   const tickerCount = filteredData.length;
@@ -92,6 +94,8 @@ export default function DashboardPage() {
           <HorizonSelector value={horizon} onChange={setHorizon} />
         </div>
       </header>
+
+      <DailyBrief data={brief} isLoading={briefLoading} onTickerClick={setSearchTicker} />
 
       <div className="relative z-10 flex-1 min-h-0">
         {isLoading && (
