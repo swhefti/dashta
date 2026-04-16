@@ -60,7 +60,7 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
       {/* Centered modal */}
       <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="glass-strong rounded-xl shadow-2xl w-full max-w-[560px] max-h-[85vh] overflow-y-auto pointer-events-auto"
+          className="glass-strong rounded-xl shadow-2xl w-full max-w-[680px] max-h-[88vh] overflow-y-auto pointer-events-auto"
           style={{
             transform: visible ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(12px)',
             opacity: visible ? 1 : 0,
@@ -92,50 +92,59 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 </svg>
               </button>
             </div>
+          </div>
 
-            {/* Metrics row */}
-            <div className="flex gap-3 mt-4">
-              <Chip label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
-              <Chip label="Mkt Cap" value={formatCap(data.market_cap)} />
-              <Chip label="Confidence">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
-                  <span className="text-[13px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: confColor }}>
-                    {Math.round(Number(data.confidence ?? 0))}
-                  </span>
-                  <span className="text-[9px] uppercase" style={{ color: confColor }}>{data.confidence_label ?? 'low'}</span>
+          {/* Two-column summary: drift on the left, chips + composites on the right */}
+          <div className="px-6 py-4 grid gap-5" style={{ gridTemplateColumns: '180px 1fr', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div>
+              <DriftMap history={history} accent={accentColor} />
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {/* Chips row */}
+              <div className="flex gap-3">
+                <Chip label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
+                <Chip label="Mkt Cap" value={formatCap(data.market_cap)} />
+                <Chip label="Confidence">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
+                    <span className="text-[13px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: confColor }}>
+                      {Math.round(Number(data.confidence ?? 0))}
+                    </span>
+                    <span className="text-[9px] uppercase" style={{ color: confColor }}>{data.confidence_label ?? 'low'}</span>
+                  </div>
+                </Chip>
+              </div>
+
+              {/* Composite scores row */}
+              <div className="flex gap-6">
+                <div className="flex-1">
+                  <div className="flex justify-between items-baseline mb-1.5">
+                    <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Risk</span>
+                    <span className="text-lg font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-danger)' }}>
+                      {Number(data.risk_score).toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="w-full h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <div className="bar-risk h-full rounded-full" style={{ width: `${data.risk_score}%` }} />
+                  </div>
                 </div>
-              </Chip>
-            </div>
-          </div>
-
-          {/* Composite scores — compact inline */}
-          <div className="px-6 py-4 flex gap-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <div className="flex-1">
-              <div className="flex justify-between items-baseline mb-1.5">
-                <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Risk</span>
-                <span className="text-lg font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-danger)' }}>
-                  {Number(data.risk_score).toFixed(1)}
-                </span>
-              </div>
-              <div className="w-full h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <div className="bar-risk h-full rounded-full" style={{ width: `${data.risk_score}%` }} />
-              </div>
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between items-baseline mb-1.5">
-                <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Upward</span>
-                <span className="text-lg font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-etf)' }}>
-                  {Number(data.upward_probability_score).toFixed(1)}
-                </span>
-              </div>
-              <div className="w-full h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <div className="bar-upward h-full rounded-full" style={{ width: `${data.upward_probability_score}%` }} />
+                <div className="flex-1">
+                  <div className="flex justify-between items-baseline mb-1.5">
+                    <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Upward</span>
+                    <span className="text-lg font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-etf)' }}>
+                      {Number(data.upward_probability_score).toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="w-full h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <div className="bar-upward h-full rounded-full" style={{ width: `${data.upward_probability_score}%` }} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Explanation — the hero content */}
+          {/* Explanation — full width */}
           <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             {data.explanation ? (
               <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-primary)', lineHeight: '1.7' }}>
@@ -146,18 +155,6 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 Explanation will be generated on the next scoring run.
               </p>
             )}
-          </div>
-
-          {/* Recent score drift — local movement around the current point */}
-          <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <DriftMap
-              history={history}
-              current={{
-                risk: Number(data.risk_score),
-                upward: Number(data.upward_probability_score),
-              }}
-              accent={accentColor}
-            />
           </div>
 
           {/* Factor breakdown — two-column grid */}
@@ -246,54 +243,62 @@ const DRIFT_PADDING = 1.25;  // pad the tightest-fit range by 25%
 
 function DriftMap({
   history,
-  current,
   accent,
 }: {
   history: HistoryRow[];
-  current: { risk: number; upward: number };
   accent: string;
 }) {
-  const recent = dedupeByDate(history ?? []).slice(-7);
-  // Deltas: x = prior_risk - current_risk, y = prior_upward - current_upward
-  const deltas = recent.map((p) => ({
-    dx: Number(p.risk_score) - current.risk,
-    dy: Number(p.upward_probability_score) - current.upward,
-    date: p.score_date,
-  }));
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  // Force last point to be exactly the anchor (guard against float drift)
+  const recent = dedupeByDate(history ?? []).slice(-10);
+
+  // Older-middle anchor: floor((n-1)/2) → 10→4, 9→4, 5→2, 3→1, 2→0
+  const anchorIdx = recent.length > 0 ? Math.floor((recent.length - 1) / 2) : 0;
+  const anchor = recent[anchorIdx];
+
+  // Deltas relative to the anchor
+  const deltas = anchor
+    ? recent.map((p, i) => ({
+        dx: Number(p.risk_score) - Number(anchor.risk_score),
+        dy: Number(p.upward_probability_score) - Number(anchor.upward_probability_score),
+        date: p.score_date,
+        isAnchor: i === anchorIdx,
+        isLatest: i === recent.length - 1,
+      }))
+    : [];
+
+  // Pin anchor exactly to (0,0) to avoid float drift
   if (deltas.length > 0) {
-    deltas[deltas.length - 1] = { ...deltas[deltas.length - 1], dx: 0, dy: 0 };
+    deltas[anchorIdx] = { ...deltas[anchorIdx], dx: 0, dy: 0 };
   }
 
-  const maxAbs = deltas.reduce(
-    (m, d) => Math.max(m, Math.abs(d.dx), Math.abs(d.dy)),
-    0
-  );
+  const maxAbs = deltas.reduce((m, d) => Math.max(m, Math.abs(d.dx), Math.abs(d.dy)), 0);
   const range = Math.min(
     MAX_DRIFT_RANGE,
     Math.max(MIN_DRIFT_RANGE, maxAbs * DRIFT_PADDING)
   );
 
-  // SVG 100×100, center (50,50), inner working area 42 units each side
   const VB = 100;
   const C = VB / 2;
   const RADIUS = 42;
   const toSvg = (dx: number, dy: number) => ({
     x: C + (dx / range) * RADIUS,
-    y: C - (dy / range) * RADIUS, // invert — upward improvement rises
+    y: C - (dy / range) * RADIUS,
   });
-  const mapped = deltas.map((d) => ({ ...toSvg(d.dx, d.dy), date: d.date }));
+  const mapped = deltas.map((d) => ({ ...toSvg(d.dx, d.dy), date: d.date, isAnchor: d.isAnchor, isLatest: d.isLatest }));
   const hasPath = mapped.length >= 2;
-
-  // Faint inner grid step at 50% of the range
   const innerStep = RADIUS / 2;
+
+  const hovered = hoverIdx != null ? mapped[hoverIdx] : null;
+  const hoverLabel = hovered
+    ? `${hovered.date}${hovered.isAnchor ? ' · anchor' : hovered.isLatest ? ' · latest' : ''}`
+    : null;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
-          Recent Score Drift
+          Score Drift
         </span>
         <span className="text-[9px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
           {recent.length} {recent.length === 1 ? 'run' : 'runs'}
@@ -301,107 +306,119 @@ function DriftMap({
       </div>
 
       {mapped.length < 2 ? (
-        <div className="h-[160px] flex items-center justify-center rounded-lg"
+        <div className="aspect-square flex items-center justify-center rounded-lg"
           style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
-          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-[10px] text-center px-2" style={{ color: 'var(--text-muted)' }}>
             Need more history to show drift.
           </span>
         </div>
       ) : (
-        <div className="rounded-lg p-2"
+        <div className="rounded-lg p-2 relative"
           style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid var(--border-subtle)' }}>
           <svg viewBox={`0 0 ${VB} ${VB}`} className="w-full" style={{ aspectRatio: '1 / 1', display: 'block' }}>
             {/* Outer frame */}
             <rect x={C - RADIUS} y={C - RADIUS} width={RADIUS * 2} height={RADIUS * 2}
               fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.35" />
 
-            {/* Faint inner ring at 50% of the range */}
-            <rect
-              x={C - innerStep} y={C - innerStep}
+            {/* Inner ring at 50% of range */}
+            <rect x={C - innerStep} y={C - innerStep}
               width={innerStep * 2} height={innerStep * 2}
-              fill="none"
-              stroke="rgba(255,255,255,0.05)"
-              strokeWidth="0.3"
-              strokeDasharray="1 2"
-            />
+              fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="0.3"
+              strokeDasharray="1 2" />
 
-            {/* Central crosshair axes */}
+            {/* Central crosshair */}
             <line x1={C - RADIUS} y1={C} x2={C + RADIUS} y2={C}
               stroke="rgba(255,255,255,0.12)" strokeWidth="0.35" />
             <line x1={C} y1={C - RADIUS} x2={C} y2={C + RADIUS}
               stroke="rgba(255,255,255,0.12)" strokeWidth="0.35" />
 
-            {/* Edge labels — extremely quiet */}
+            {/* Edge labels */}
             <text x={C - RADIUS + 0.5} y={C - 1.5} fontSize="2.6"
-              fill="rgba(255,255,255,0.28)"
-              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
-              − risk
-            </text>
-            <text x={C + RADIUS - 0.5} y={C - 1.5} fontSize="2.6"
-              textAnchor="end"
-              fill="rgba(255,255,255,0.28)"
-              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
-              + risk
-            </text>
+              fill="rgba(255,255,255,0.28)" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>− risk</text>
+            <text x={C + RADIUS - 0.5} y={C - 1.5} fontSize="2.6" textAnchor="end"
+              fill="rgba(255,255,255,0.28)" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>+ risk</text>
             <text x={C + 1.5} y={C - RADIUS + 2.8} fontSize="2.6"
-              fill="rgba(255,255,255,0.28)"
-              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
-              + upward
-            </text>
+              fill="rgba(255,255,255,0.28)" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>+ upward</text>
             <text x={C + 1.5} y={C + RADIUS - 0.5} fontSize="2.6"
-              fill="rgba(255,255,255,0.28)"
-              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
-              − upward
-            </text>
+              fill="rgba(255,255,255,0.28)" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>− upward</text>
 
-            {/* Path — thin, with fading opacity on older segments */}
+            {/* Path segments */}
             {hasPath && mapped.slice(1).map((pt, i) => {
               const prev = mapped[i];
               const frac = (i + 1) / (mapped.length - 1);
               const opacity = 0.18 + frac * 0.45;
               return (
-                <line
-                  key={`seg-${i}`}
+                <line key={`seg-${i}`}
                   x1={prev.x} y1={prev.y} x2={pt.x} y2={pt.y}
-                  stroke={accent}
-                  strokeOpacity={opacity}
-                  strokeWidth="0.7"
-                  strokeLinecap="round"
-                />
+                  stroke={accent} strokeOpacity={opacity} strokeWidth="0.7" strokeLinecap="round" />
               );
             })}
 
-            {/* Prior points — small and soft */}
+            {/* Points */}
             {mapped.map((pt, i) => {
-              const isLast = i === mapped.length - 1;
-              if (isLast) return null;
-              const isFirst = i === 0;
               const frac = mapped.length > 1 ? i / (mapped.length - 1) : 1;
-              const r = isFirst ? 0.9 : 0.7 + frac * 0.45;
-              const opacity = isFirst ? 0.5 : 0.28 + frac * 0.45;
-              if (isFirst) {
+              const baseR = 0.7 + frac * 0.45;
+              const baseOpacity = 0.3 + frac * 0.45;
+
+              if (pt.isAnchor) {
                 return (
-                  <circle key={`pt-${i}`} cx={pt.x} cy={pt.y} r={r}
-                    fill="none" stroke={accent} strokeWidth="0.4" strokeOpacity={opacity} />
+                  <g key={`pt-${i}`}>
+                    <circle cx={pt.x} cy={pt.y} r="1.4"
+                      fill="none" stroke={accent} strokeWidth="0.55" strokeOpacity="0.7" />
+                    <circle cx={pt.x} cy={pt.y} r="0.45" fill={accent} opacity="0.7" />
+                  </g>
+                );
+              }
+              if (pt.isLatest) {
+                return (
+                  <g key={`pt-${i}`}>
+                    <circle cx={pt.x} cy={pt.y} r="2.1" fill={accent} opacity="0.12" />
+                    <circle cx={pt.x} cy={pt.y} r="1.15" fill={accent} />
+                  </g>
                 );
               }
               return (
-                <circle key={`pt-${i}`} cx={pt.x} cy={pt.y} r={r}
-                  fill={accent} opacity={opacity} />
+                <circle key={`pt-${i}`} cx={pt.x} cy={pt.y} r={baseR}
+                  fill={accent} opacity={baseOpacity} />
               );
             })}
 
-            {/* Current point — anchor at center, modestly emphasized */}
-            {mapped.length > 0 && (() => {
-              const pt = mapped[mapped.length - 1];
-              return (
-                <g>
-                  <circle cx={pt.x} cy={pt.y} r="2.3" fill={accent} opacity="0.12" />
-                  <circle cx={pt.x} cy={pt.y} r="1.25" fill={accent} />
-                </g>
-              );
-            })()}
+            {/* Hover hit-targets — slightly larger transparent circles */}
+            {mapped.map((pt, i) => (
+              <circle
+                key={`hit-${i}`}
+                cx={pt.x} cy={pt.y} r="3.5"
+                fill="transparent"
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={() => setHoverIdx(i)}
+                onMouseLeave={() => setHoverIdx((cur) => (cur === i ? null : cur))}
+              />
+            ))}
+
+            {/* Hover ring on the active point */}
+            {hovered && (
+              <circle cx={hovered.x} cy={hovered.y} r="2.6"
+                fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="0.4" />
+            )}
           </svg>
+
+          {/* Tooltip — small, top-right of the panel */}
+          {hoverLabel && (
+            <div
+              className="absolute top-2 right-2 px-1.5 py-0.5 rounded pointer-events-none"
+              style={{
+                background: 'rgba(0,0,0,0.55)',
+                border: '1px solid var(--border-subtle)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '9px',
+                color: 'var(--text-secondary)',
+                letterSpacing: '0.04em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {hoverLabel}
+            </div>
+          )}
         </div>
       )}
     </div>
