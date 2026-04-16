@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BubbleChart } from '../components/BubbleChart';
 import { HorizonSelector } from '../components/HorizonSelector';
 import { AssetFilter } from '../components/AssetFilter';
@@ -21,6 +21,18 @@ export default function DashboardPage() {
   const [mode, setMode] = useState('percentile');
   const [activeClasses, setActiveClasses] = useState<Set<AssetClass>>(new Set(['stock', 'etf', 'crypto']));
   const [searchTicker, setSearchTicker] = useState<string | null>(null);
+  const [briefCollapsed, setBriefCollapsed] = useState(false);
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('briefCollapsed') : null;
+    if (stored === '1') setBriefCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('briefCollapsed', briefCollapsed ? '1' : '0');
+    }
+  }, [briefCollapsed]);
 
   const { data, isLoading, error } = useScores(horizon, mode);
   const { data: brief, isLoading: briefLoading } = useBrief(horizon, mode);
@@ -95,36 +107,44 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <DailyBrief data={brief} isLoading={briefLoading} onTickerClick={setSearchTicker} />
-
-      <div className="relative z-10 flex-1 min-h-0">
-        {isLoading && (
-          <div className="flex items-center justify-center h-full gap-3">
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-stock)' }} />
-            <span className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>Loading scores...</span>
-          </div>
-        )}
-        {error && (
-          <div className="flex items-center justify-center h-full">
-            <div className="glass rounded-lg px-5 py-3 flex items-center gap-3">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-danger)' }} />
-              <span className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-danger)' }}>{error}</span>
+      <div className="relative z-10 flex-1 min-h-0 flex">
+        <div className="flex-1 min-w-0 relative">
+          {isLoading && (
+            <div className="flex items-center justify-center h-full gap-3">
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-stock)' }} />
+              <span className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>Loading scores...</span>
             </div>
-          </div>
-        )}
-        {!isLoading && !error && noData && (
-          <div className="flex items-center justify-center h-full">
-            <div className="glass rounded-lg px-6 py-5 max-w-md text-center space-y-2">
-              <div className="text-sm font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>No {horizon}mo scores available</div>
-              <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                Run <code className="px-1 py-0.5 rounded" style={{ background: 'var(--border-subtle)' }}>npm run score:{horizon}mo</code> to generate.
+          )}
+          {error && (
+            <div className="flex items-center justify-center h-full">
+              <div className="glass rounded-lg px-5 py-3 flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-danger)' }} />
+                <span className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-danger)' }}>{error}</span>
               </div>
             </div>
-          </div>
-        )}
-        {!isLoading && !error && !noData && (
-          <BubbleChart scores={filteredData} highlightTicker={searchTicker} horizon={horizon} mode={mode} />
-        )}
+          )}
+          {!isLoading && !error && noData && (
+            <div className="flex items-center justify-center h-full">
+              <div className="glass rounded-lg px-6 py-5 max-w-md text-center space-y-2">
+                <div className="text-sm font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>No {horizon}mo scores available</div>
+                <div className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                  Run <code className="px-1 py-0.5 rounded" style={{ background: 'var(--border-subtle)' }}>npm run score:{horizon}mo</code> to generate.
+                </div>
+              </div>
+            </div>
+          )}
+          {!isLoading && !error && !noData && (
+            <BubbleChart scores={filteredData} highlightTicker={searchTicker} horizon={horizon} mode={mode} />
+          )}
+        </div>
+
+        <DailyBrief
+          data={brief}
+          isLoading={briefLoading}
+          collapsed={briefCollapsed}
+          onToggleCollapsed={() => setBriefCollapsed((v) => !v)}
+          onTickerClick={setSearchTicker}
+        />
       </div>
 
       <footer className="relative z-20 flex items-center justify-between px-6 py-1.5 border-t"
