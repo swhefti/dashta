@@ -68,7 +68,7 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
           }}
         >
           {/* Header */}
-          <div className="px-6 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="px-6 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2.5 mb-1">
@@ -94,15 +94,18 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             </div>
           </div>
 
-          {/* Two-column summary: drift on the left, chips + composites on the right */}
-          <div className="px-6 py-4 grid gap-5" style={{ gridTemplateColumns: '180px 1fr', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div>
+          {/* Two-column summary: drift on the left, chips + stacked composites on the right */}
+          <div
+            className="px-6 py-4 grid gap-6 items-stretch"
+            style={{ gridTemplateColumns: '230px 1fr', borderBottom: '1px solid var(--border-subtle)' }}
+          >
+            <div className="flex flex-col">
               <DriftMap history={history} accent={accentColor} />
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col justify-between gap-4 min-h-[230px]">
               {/* Chips row */}
-              <div className="flex gap-3">
+              <div className="grid grid-cols-3 gap-2.5">
                 <Chip label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
                 <Chip label="Mkt Cap" value={formatCap(data.market_cap)} />
                 <Chip label="Confidence">
@@ -116,36 +119,26 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 </Chip>
               </div>
 
-              {/* Composite scores row */}
-              <div className="flex gap-6">
-                <div className="flex-1">
-                  <div className="flex justify-between items-baseline mb-1.5">
-                    <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Risk</span>
-                    <span className="text-lg font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-danger)' }}>
-                      {Number(data.risk_score).toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="w-full h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                    <div className="bar-risk h-full rounded-full" style={{ width: `${data.risk_score}%` }} />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-baseline mb-1.5">
-                    <span className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Upward</span>
-                    <span className="text-lg font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-etf)' }}>
-                      {Number(data.upward_probability_score).toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="w-full h-[4px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                    <div className="bar-upward h-full rounded-full" style={{ width: `${data.upward_probability_score}%` }} />
-                  </div>
-                </div>
+              {/* Composite scores — stacked vertically with a slightly heavier treatment */}
+              <div className="flex flex-col gap-3.5">
+                <CompositeScore
+                  label="Risk"
+                  value={Number(data.risk_score)}
+                  color="var(--accent-danger)"
+                  barClass="bar-risk"
+                />
+                <CompositeScore
+                  label="Upward Probability"
+                  value={Number(data.upward_probability_score)}
+                  color="var(--accent-etf)"
+                  barClass="bar-upward"
+                />
               </div>
             </div>
           </div>
 
           {/* Explanation — full width */}
-          <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             {data.explanation ? (
               <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-primary)', lineHeight: '1.7' }}>
                 {data.explanation}
@@ -161,8 +154,8 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
           <div className="px-6 py-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-0">
               <div>
-                <h4 className="text-[9px] font-medium uppercase tracking-[0.15em] mb-2.5" style={{ color: 'var(--text-muted)' }}>Risk Factors</h4>
-                <div className="space-y-2">
+                <h4 className="text-[9px] font-medium uppercase tracking-[0.15em] mb-2" style={{ color: 'var(--text-muted)' }}>Risk Factors</h4>
+                <div className="space-y-1.5">
                   <FactorRow label="Volatility" value={data.volatility_score} />
                   <FactorRow label="Drawdown" value={data.max_drawdown_score} />
                   <FactorRow label="Beta" value={data.beta_score} />
@@ -171,8 +164,8 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 </div>
               </div>
               <div>
-                <h4 className="text-[9px] font-medium uppercase tracking-[0.15em] mb-2.5" style={{ color: 'var(--text-muted)' }}>Upward Factors</h4>
-                <div className="space-y-2">
+                <h4 className="text-[9px] font-medium uppercase tracking-[0.15em] mb-2" style={{ color: 'var(--text-muted)' }}>Upward Factors</h4>
+                <div className="space-y-1.5">
                   <FactorRow label="Momentum" value={data.trend_momentum_score} />
                   <FactorRow label="Reversion" value={data.mean_reversion_score} />
                   <FactorRow label="Value" value={data.fundamental_value_score} />
@@ -185,7 +178,7 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
           </div>
 
           {/* Disclaimer */}
-          <div className="px-6 pb-4">
+          <div className="px-6 pb-3">
             <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
               Scores are for informational purposes only. Not financial advice. Past performance does not guarantee future results.
             </p>
@@ -200,11 +193,29 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
 
 function Chip({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex-1 rounded-md px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
-      <div className="text-[9px] uppercase tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{label}</div>
+    <div className="rounded-md px-3 py-2 min-w-0" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+      <div className="text-[9px] uppercase tracking-wider mb-0.5" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{label}</div>
       {children ?? (
-        <div className="text-[13px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{value}</div>
+        <div className="text-[13px] font-medium truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{value}</div>
       )}
+    </div>
+  );
+}
+
+function CompositeScore({ label, value, color, barClass }: { label: string; value: number; color: string; barClass: string }) {
+  return (
+    <div>
+      <div className="flex justify-between items-baseline mb-2">
+        <span className="text-[10px] uppercase tracking-[0.15em]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+          {label}
+        </span>
+        <span className="text-2xl font-semibold leading-none" style={{ fontFamily: 'var(--font-mono)', color }}>
+          {value.toFixed(1)}
+        </span>
+      </div>
+      <div className="w-full h-[5px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+        <div className={`${barClass} h-full rounded-full`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+      </div>
     </div>
   );
 }
