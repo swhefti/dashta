@@ -405,7 +405,7 @@ function DriftMap({
             {mapped.map((pt, i) => (
               <circle
                 key={`hit-${i}`}
-                cx={pt.x} cy={pt.y} r="3.5"
+                cx={pt.x} cy={pt.y} r="4.5"
                 fill="transparent"
                 style={{ cursor: 'pointer' }}
                 onMouseEnter={() => setHoverIdx(i)}
@@ -420,18 +420,25 @@ function DriftMap({
             )}
           </svg>
 
-          {/* Tooltip — small, top-right of the panel */}
-          {hoverLabel && (
+          {/* Tooltip — anchored next to the hovered dot */}
+          {hovered && hoverLabel && (
             <div
-              className="absolute top-2 right-2 px-1.5 py-0.5 rounded pointer-events-none"
+              className="absolute pointer-events-none px-1.5 py-0.5 rounded"
               style={{
-                background: 'rgba(0,0,0,0.55)',
+                left: `${hovered.x}%`,
+                top: `${hovered.y}%`,
+                transform:
+                  hovered.x > 65
+                    ? 'translate(calc(-100% - 8px), -50%)'
+                    : 'translate(8px, -50%)',
+                background: 'rgba(0,0,0,0.78)',
                 border: '1px solid var(--border-subtle)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '9px',
                 color: 'var(--text-secondary)',
                 letterSpacing: '0.04em',
                 whiteSpace: 'nowrap',
+                zIndex: 2,
               }}
             >
               {hoverLabel}
