@@ -148,12 +148,10 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             )}
           </div>
 
-          {/* Score history sparkline */}
-          {history.length > 1 && (
-            <div className="px-6 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-              <MiniHistory history={history} />
-            </div>
-          )}
+          {/* Score trajectory — 2D path through the risk/upward grid */}
+          <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <TrajectoryMap history={history} accent={accentColor} />
+          </div>
 
           {/* Factor breakdown — two-column grid */}
           <div className="px-6 py-4">
@@ -223,23 +221,149 @@ function FactorRow({ label, value }: { label: string; value?: number | null }) {
   );
 }
 
-function MiniHistory({ history }: { history: any[] }) {
-  const riskPts = history.map((h: any, i: number) => `${(i / (history.length - 1)) * 100},${100 - Number(h.risk_score)}`).join(' ');
-  const upPts = history.map((h: any, i: number) => `${(i / (history.length - 1)) * 100},${100 - Number(h.upward_probability_score)}`).join(' ');
+interface HistoryRow {
+  score_date: string;
+  risk_score: number | string;
+  upward_probability_score: number | string;
+}
+
+function dedupeByDate(history: HistoryRow[]): HistoryRow[] {
+  const map = new Map<string, HistoryRow>();
+  for (const h of history) map.set(h.score_date, h);
+  return [...map.values()].sort((a, b) => a.score_date < b.score_date ? -1 : 1);
+}
+
+function TrajectoryMap({ history, accent }: { history: HistoryRow[]; accent: string }) {
+  const points = dedupeByDate(history ?? []).slice(-10);
+  const hasPath = points.length >= 2;
+
+  // Map from [0,100] score space to [0, VB] SVG space (invert y)
+  const VB = 100;
+  const PAD = 6;
+  const map = (risk: number, upward: number) => ({
+    x: PAD + (risk / 100) * (VB - 2 * PAD),
+    y: PAD + ((100 - upward) / 100) * (VB - 2 * PAD),
+  });
+
+  const mapped = points.map((p) => ({
+    ...map(Number(p.risk_score), Number(p.upward_probability_score)),
+    date: p.score_date,
+  }));
+
+  const gridLines = [25, 50, 75];
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>History ({history.length}d)</span>
-        <div className="flex gap-3">
-          <span className="text-[9px]" style={{ color: 'var(--accent-danger)' }}>risk</span>
-          <span className="text-[9px]" style={{ color: 'var(--accent-etf)' }}>upward</span>
-        </div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
+          Trajectory
+        </span>
+        <span className="text-[9px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+          {points.length} {points.length === 1 ? 'run' : 'runs'}
+        </span>
       </div>
-      <svg viewBox="0 0 100 100" className="w-full h-12" preserveAspectRatio="none">
-        <polyline points={riskPts} fill="none" stroke="var(--accent-danger)" strokeWidth="1.5" strokeOpacity="0.6" vectorEffect="non-scaling-stroke" />
-        <polyline points={upPts} fill="none" stroke="var(--accent-etf)" strokeWidth="1.5" strokeOpacity="0.6" vectorEffect="non-scaling-stroke" />
-      </svg>
+
+      {points.length < 2 ? (
+        <div className="h-[180px] flex items-center justify-center rounded-lg"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
+          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Need more history to show trajectory.
+          </span>
+        </div>
+      ) : (
+        <div className="rounded-lg p-2"
+          style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid var(--border-subtle)' }}>
+          <svg viewBox={`0 0 ${VB} ${VB}`} className="w-full" style={{ aspectRatio: '1 / 1', display: 'block' }}>
+            {/* Quadrant tints — very soft */}
+            <rect x={PAD} y={PAD} width={(VB - 2 * PAD) / 2} height={(VB - 2 * PAD) / 2}
+              fill="var(--accent-etf)" opacity="0.035" />
+            <rect x={VB / 2} y={VB / 2} width={(VB - 2 * PAD) / 2} height={(VB - 2 * PAD) / 2}
+              fill="var(--accent-danger)" opacity="0.03" />
+
+            {/* Grid 25/50/75 */}
+            {gridLines.map((g) => {
+              const p = map(g, 50).x;
+              const py = map(50, g).y;
+              const isMid = g === 50;
+              const stroke = isMid ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)';
+              return (
+                <g key={g}>
+                  <line x1={p} y1={PAD} x2={p} y2={VB - PAD}
+                    stroke={stroke} strokeWidth="0.4" strokeDasharray={isMid ? 'none' : '1.2 2'} />
+                  <line x1={PAD} y1={py} x2={VB - PAD} y2={py}
+                    stroke={stroke} strokeWidth="0.4" strokeDasharray={isMid ? 'none' : '1.2 2'} />
+                </g>
+              );
+            })}
+
+            {/* Frame */}
+            <rect x={PAD} y={PAD} width={VB - 2 * PAD} height={VB - 2 * PAD}
+              fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="0.4" />
+
+            {/* Path: dim older segments, brighten newer; render segment-by-segment */}
+            {hasPath && mapped.slice(1).map((pt, i) => {
+              const prev = mapped[i];
+              const frac = (i + 1) / (mapped.length - 1);
+              const isLast = i === mapped.length - 2;
+              const opacity = 0.25 + frac * 0.55;
+              const width = isLast ? 1.6 : 0.9 + frac * 0.5;
+              return (
+                <line
+                  key={`seg-${i}`}
+                  x1={prev.x} y1={prev.y} x2={pt.x} y2={pt.y}
+                  stroke={accent}
+                  strokeOpacity={opacity}
+                  strokeWidth={width}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+
+            {/* Points */}
+            {mapped.map((pt, i) => {
+              const isFirst = i === 0;
+              const isLast = i === mapped.length - 1;
+              const frac = mapped.length > 1 ? i / (mapped.length - 1) : 1;
+              const r = isLast ? 2.6 : isFirst ? 1.8 : 0.9 + frac * 1.0;
+              const opacity = isLast ? 1 : isFirst ? 0.75 : 0.35 + frac * 0.4;
+
+              if (isFirst) {
+                return (
+                  <circle key={`pt-${i}`} cx={pt.x} cy={pt.y} r={r}
+                    fill="none" stroke={accent} strokeWidth="0.7" strokeOpacity={opacity} />
+                );
+              }
+              if (isLast) {
+                return (
+                  <g key={`pt-${i}`}>
+                    <circle cx={pt.x} cy={pt.y} r={r + 2.4}
+                      fill={accent} opacity="0.15" />
+                    <circle cx={pt.x} cy={pt.y} r={r}
+                      fill={accent} stroke="rgba(255,255,255,0.85)" strokeWidth="0.4" />
+                  </g>
+                );
+              }
+              return (
+                <circle key={`pt-${i}`} cx={pt.x} cy={pt.y} r={r}
+                  fill={accent} opacity={opacity} />
+              );
+            })}
+
+            {/* Axis corner labels */}
+            <text x={PAD + 1} y={PAD + 4} fontSize="3.4"
+              fill="rgba(255,255,255,0.35)"
+              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.12em' }}>
+              UP
+            </text>
+            <text x={VB - PAD - 1} y={VB - PAD - 1.5} fontSize="3.4"
+              textAnchor="end"
+              fill="rgba(255,255,255,0.35)"
+              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.12em' }}>
+              RISK
+            </text>
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
