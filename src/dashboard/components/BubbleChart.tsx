@@ -23,6 +23,23 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: any } | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<any>(null);
+  const [sizeTick, setSizeTick] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let last = { w: el.clientWidth, h: el.clientHeight };
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (Math.abs(w - last.w) > 1 || Math.abs(h - last.h) > 1) {
+        last = { w, h };
+        setSizeTick((t) => t + 1);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || scores.length === 0) return;
@@ -225,7 +242,7 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
     updateLabels(1);
 
     return () => { svg.selectAll('*').remove(); };
-  }, [scores, highlightTicker, horizon]);
+  }, [scores, highlightTicker, horizon, sizeTick]);
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
