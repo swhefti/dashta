@@ -96,19 +96,19 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
 
           {/* Two-column summary: drift on the left, chips + stacked composites on the right */}
           <div
-            className="px-6 py-4 grid gap-6 items-stretch"
-            style={{ gridTemplateColumns: '2fr 1fr', borderBottom: '1px solid var(--border-subtle)' }}
+            className="px-6 py-4 grid gap-5 items-stretch"
+            style={{ gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border-subtle)' }}
           >
             <div className="flex flex-col">
               <DriftMap history={history} accent={accentColor} />
             </div>
 
-            <div className="flex flex-col justify-between gap-4">
-              {/* Chips row */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <Chip label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
-                <Chip label="Mkt Cap" value={formatCap(data.market_cap)} />
-                <Chip label="Confidence">
+            <div className="flex flex-col justify-between gap-3">
+              {/* Chips — stacked vertically */}
+              <div className="flex flex-col gap-2">
+                <ChipRow label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
+                <ChipRow label="Mkt Cap" value={formatCap(data.market_cap)} />
+                <ChipRow label="Confidence">
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
                     <span className="text-[13px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: confColor }}>
@@ -116,11 +116,11 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                     </span>
                     <span className="text-[9px] uppercase" style={{ color: confColor }}>{data.confidence_label ?? 'low'}</span>
                   </div>
-                </Chip>
+                </ChipRow>
               </div>
 
-              {/* Composite scores — stacked vertically with a slightly heavier treatment */}
-              <div className="flex flex-col gap-3.5">
+              {/* Composite scores — stacked vertically */}
+              <div className="flex flex-col gap-3">
                 <CompositeScore
                   label="Risk"
                   value={Number(data.risk_score)}
@@ -197,6 +197,22 @@ function Chip({ label, value, children }: { label: string; value?: string; child
       <div className="text-[9px] uppercase tracking-wider mb-0.5" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{label}</div>
       {children ?? (
         <div className="text-[13px] font-medium truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{value}</div>
+      )}
+    </div>
+  );
+}
+
+function ChipRow({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
+  return (
+    <div
+      className="flex items-center justify-between rounded-md px-3 py-2 min-w-0"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}
+    >
+      <span className="text-[10px] uppercase tracking-[0.14em]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+        {label}
+      </span>
+      {children ?? (
+        <span className="text-[13px] font-medium truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{value}</span>
       )}
     </div>
   );
