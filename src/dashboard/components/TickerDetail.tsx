@@ -148,9 +148,16 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             )}
           </div>
 
-          {/* Score trajectory — 2D path through the risk/upward grid */}
+          {/* Recent score drift — local movement around the current point */}
           <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <TrajectoryMap history={history} accent={accentColor} />
+            <DriftMap
+              history={history}
+              current={{
+                risk: Number(data.risk_score),
+                upward: Number(data.upward_probability_score),
+              }}
+              accent={accentColor}
+            />
           </div>
 
           {/* Factor breakdown — two-column grid */}
@@ -233,114 +240,149 @@ function dedupeByDate(history: HistoryRow[]): HistoryRow[] {
   return [...map.values()].sort((a, b) => a.score_date < b.score_date ? -1 : 1);
 }
 
-function TrajectoryMap({ history, accent }: { history: HistoryRow[]; accent: string }) {
-  const points = dedupeByDate(history ?? []).slice(-10);
-  const hasPath = points.length >= 2;
+const MIN_DRIFT_RANGE = 5;   // so tiny moves are still visible
+const MAX_DRIFT_RANGE = 40;  // so one outlier doesn't dominate
+const DRIFT_PADDING = 1.25;  // pad the tightest-fit range by 25%
 
-  // Map from [0,100] score space to [0, VB] SVG space (invert y)
-  const VB = 100;
-  const PAD = 6;
-  const map = (risk: number, upward: number) => ({
-    x: PAD + (risk / 100) * (VB - 2 * PAD),
-    y: PAD + ((100 - upward) / 100) * (VB - 2 * PAD),
-  });
-
-  const mapped = points.map((p) => ({
-    ...map(Number(p.risk_score), Number(p.upward_probability_score)),
+function DriftMap({
+  history,
+  current,
+  accent,
+}: {
+  history: HistoryRow[];
+  current: { risk: number; upward: number };
+  accent: string;
+}) {
+  const recent = dedupeByDate(history ?? []).slice(-7);
+  // Deltas: x = prior_risk - current_risk, y = prior_upward - current_upward
+  const deltas = recent.map((p) => ({
+    dx: Number(p.risk_score) - current.risk,
+    dy: Number(p.upward_probability_score) - current.upward,
     date: p.score_date,
   }));
 
-  const gridLines = [25, 50, 75];
+  // Force last point to be exactly the anchor (guard against float drift)
+  if (deltas.length > 0) {
+    deltas[deltas.length - 1] = { ...deltas[deltas.length - 1], dx: 0, dy: 0 };
+  }
+
+  const maxAbs = deltas.reduce(
+    (m, d) => Math.max(m, Math.abs(d.dx), Math.abs(d.dy)),
+    0
+  );
+  const range = Math.min(
+    MAX_DRIFT_RANGE,
+    Math.max(MIN_DRIFT_RANGE, maxAbs * DRIFT_PADDING)
+  );
+
+  // SVG 100×100, center (50,50), inner working area 42 units each side
+  const VB = 100;
+  const C = VB / 2;
+  const RADIUS = 42;
+  const toSvg = (dx: number, dy: number) => ({
+    x: C + (dx / range) * RADIUS,
+    y: C - (dy / range) * RADIUS, // invert — upward improvement rises
+  });
+  const mapped = deltas.map((d) => ({ ...toSvg(d.dx, d.dy), date: d.date }));
+  const hasPath = mapped.length >= 2;
+
+  // Faint inner grid step at 50% of the range
+  const innerStep = RADIUS / 2;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
-          Trajectory
+          Recent Score Drift
         </span>
         <span className="text-[9px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-          {points.length} {points.length === 1 ? 'run' : 'runs'}
+          {recent.length} {recent.length === 1 ? 'run' : 'runs'}
         </span>
       </div>
 
-      {points.length < 2 ? (
-        <div className="h-[180px] flex items-center justify-center rounded-lg"
+      {mapped.length < 2 ? (
+        <div className="h-[160px] flex items-center justify-center rounded-lg"
           style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Need more history to show trajectory.
+            Need more history to show drift.
           </span>
         </div>
       ) : (
         <div className="rounded-lg p-2"
           style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid var(--border-subtle)' }}>
           <svg viewBox={`0 0 ${VB} ${VB}`} className="w-full" style={{ aspectRatio: '1 / 1', display: 'block' }}>
-            {/* Quadrant tints — very soft */}
-            <rect x={PAD} y={PAD} width={(VB - 2 * PAD) / 2} height={(VB - 2 * PAD) / 2}
-              fill="var(--accent-etf)" opacity="0.035" />
-            <rect x={VB / 2} y={VB / 2} width={(VB - 2 * PAD) / 2} height={(VB - 2 * PAD) / 2}
-              fill="var(--accent-danger)" opacity="0.03" />
+            {/* Outer frame */}
+            <rect x={C - RADIUS} y={C - RADIUS} width={RADIUS * 2} height={RADIUS * 2}
+              fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.35" />
 
-            {/* Grid 25/50/75 */}
-            {gridLines.map((g) => {
-              const p = map(g, 50).x;
-              const py = map(50, g).y;
-              const isMid = g === 50;
-              const stroke = isMid ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)';
-              return (
-                <g key={g}>
-                  <line x1={p} y1={PAD} x2={p} y2={VB - PAD}
-                    stroke={stroke} strokeWidth="0.4" strokeDasharray={isMid ? 'none' : '1.2 2'} />
-                  <line x1={PAD} y1={py} x2={VB - PAD} y2={py}
-                    stroke={stroke} strokeWidth="0.4" strokeDasharray={isMid ? 'none' : '1.2 2'} />
-                </g>
-              );
-            })}
+            {/* Faint inner ring at 50% of the range */}
+            <rect
+              x={C - innerStep} y={C - innerStep}
+              width={innerStep * 2} height={innerStep * 2}
+              fill="none"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="0.3"
+              strokeDasharray="1 2"
+            />
 
-            {/* Frame */}
-            <rect x={PAD} y={PAD} width={VB - 2 * PAD} height={VB - 2 * PAD}
-              fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="0.4" />
+            {/* Central crosshair axes */}
+            <line x1={C - RADIUS} y1={C} x2={C + RADIUS} y2={C}
+              stroke="rgba(255,255,255,0.12)" strokeWidth="0.35" />
+            <line x1={C} y1={C - RADIUS} x2={C} y2={C + RADIUS}
+              stroke="rgba(255,255,255,0.12)" strokeWidth="0.35" />
 
-            {/* Path: dim older segments, brighten newer; render segment-by-segment */}
+            {/* Edge labels — extremely quiet */}
+            <text x={C - RADIUS + 0.5} y={C - 1.5} fontSize="2.6"
+              fill="rgba(255,255,255,0.28)"
+              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+              − risk
+            </text>
+            <text x={C + RADIUS - 0.5} y={C - 1.5} fontSize="2.6"
+              textAnchor="end"
+              fill="rgba(255,255,255,0.28)"
+              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+              + risk
+            </text>
+            <text x={C + 1.5} y={C - RADIUS + 2.8} fontSize="2.6"
+              fill="rgba(255,255,255,0.28)"
+              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+              + upward
+            </text>
+            <text x={C + 1.5} y={C + RADIUS - 0.5} fontSize="2.6"
+              fill="rgba(255,255,255,0.28)"
+              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>
+              − upward
+            </text>
+
+            {/* Path — thin, with fading opacity on older segments */}
             {hasPath && mapped.slice(1).map((pt, i) => {
               const prev = mapped[i];
               const frac = (i + 1) / (mapped.length - 1);
-              const isLast = i === mapped.length - 2;
-              const opacity = 0.25 + frac * 0.55;
-              const width = isLast ? 1.6 : 0.9 + frac * 0.5;
+              const opacity = 0.18 + frac * 0.45;
               return (
                 <line
                   key={`seg-${i}`}
                   x1={prev.x} y1={prev.y} x2={pt.x} y2={pt.y}
                   stroke={accent}
                   strokeOpacity={opacity}
-                  strokeWidth={width}
+                  strokeWidth="0.7"
                   strokeLinecap="round"
                 />
               );
             })}
 
-            {/* Points */}
+            {/* Prior points — small and soft */}
             {mapped.map((pt, i) => {
-              const isFirst = i === 0;
               const isLast = i === mapped.length - 1;
+              if (isLast) return null;
+              const isFirst = i === 0;
               const frac = mapped.length > 1 ? i / (mapped.length - 1) : 1;
-              const r = isLast ? 2.6 : isFirst ? 1.8 : 0.9 + frac * 1.0;
-              const opacity = isLast ? 1 : isFirst ? 0.75 : 0.35 + frac * 0.4;
-
+              const r = isFirst ? 0.9 : 0.7 + frac * 0.45;
+              const opacity = isFirst ? 0.5 : 0.28 + frac * 0.45;
               if (isFirst) {
                 return (
                   <circle key={`pt-${i}`} cx={pt.x} cy={pt.y} r={r}
-                    fill="none" stroke={accent} strokeWidth="0.7" strokeOpacity={opacity} />
-                );
-              }
-              if (isLast) {
-                return (
-                  <g key={`pt-${i}`}>
-                    <circle cx={pt.x} cy={pt.y} r={r + 2.4}
-                      fill={accent} opacity="0.15" />
-                    <circle cx={pt.x} cy={pt.y} r={r}
-                      fill={accent} stroke="rgba(255,255,255,0.85)" strokeWidth="0.4" />
-                  </g>
+                    fill="none" stroke={accent} strokeWidth="0.4" strokeOpacity={opacity} />
                 );
               }
               return (
@@ -349,18 +391,16 @@ function TrajectoryMap({ history, accent }: { history: HistoryRow[]; accent: str
               );
             })}
 
-            {/* Axis corner labels */}
-            <text x={PAD + 1} y={PAD + 4} fontSize="3.4"
-              fill="rgba(255,255,255,0.35)"
-              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.12em' }}>
-              UP
-            </text>
-            <text x={VB - PAD - 1} y={VB - PAD - 1.5} fontSize="3.4"
-              textAnchor="end"
-              fill="rgba(255,255,255,0.35)"
-              style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.12em' }}>
-              RISK
-            </text>
+            {/* Current point — anchor at center, modestly emphasized */}
+            {mapped.length > 0 && (() => {
+              const pt = mapped[mapped.length - 1];
+              return (
+                <g>
+                  <circle cx={pt.x} cy={pt.y} r="2.3" fill={accent} opacity="0.12" />
+                  <circle cx={pt.x} cy={pt.y} r="1.25" fill={accent} />
+                </g>
+              );
+            })()}
           </svg>
         </div>
       )}
