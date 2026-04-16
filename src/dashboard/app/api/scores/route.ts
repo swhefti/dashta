@@ -49,6 +49,37 @@ export async function GET(request: NextRequest) {
     for (const e of explanations) explMap.set(e.ticker, e.explanation_text);
   }
 
+  // Fallback: fill missing current_price from latest price_history close.
+  // Some tickers added later never entered market_quotes but have full
+  // daily history, so the scoring run wrote NULL price.
+  const missingPriceTickers = (scores ?? [])
+    .filter((s: any) => s.current_price == null)
+    .map((s: any) => s.ticker);
+  if (missingPriceTickers.length > 0) {
+    const { data: phRows } = await supabase
+      .from('price_history')
+      .select('ticker, date, close')
+      .in('ticker', missingPriceTickers)
+      .order('date', { ascending: false });
+    const fallback = new Map<string, number>();
+    if (phRows) {
+      for (const row of phRows) {
+        const t = (row as any).ticker as string;
+        if (!fallback.has(t) && (row as any).close != null) {
+          fallback.set(t, Number((row as any).close));
+        }
+      }
+    }
+    if (scores) {
+      for (const s of scores) {
+        if ((s as any).current_price == null) {
+          const fb = fallback.get((s as any).ticker);
+          if (fb != null) (s as any).current_price = fb;
+        }
+      }
+    }
+  }
+
   // Load latest fundamentals per ticker for the modal stat grid
   const tickers = (scores ?? []).map((s: any) => s.ticker);
   const fundsMap = new Map<string, any>();

@@ -138,8 +138,29 @@ export async function loadMarketCaps(
     nameMap.set(t.symbol, t.name);
   }
 
+  // 5b. Fallback: latest close from price_history for any ticker
+  // that doesn't have a row in market_quotes. Some tickers (added later)
+  // never made it into market_quotes but have full daily history.
+  const missingPrice = symbols.filter((s) => !latestPrice.has(s));
+  if (missingPrice.length > 0) {
+    const { data: phRows, error: phErr } = await supabase
+      .from('price_history')
+      .select('ticker, date, close')
+      .in('ticker', missingPrice)
+      .order('date', { ascending: false });
+    if (phErr) {
+      console.warn(`Failed to load price_history fallback prices: ${phErr.message}`);
+    } else if (phRows) {
+      for (const row of phRows) {
+        const ticker = row.ticker as string;
+        if (!latestPrice.has(ticker) && row.close != null) {
+          latestPrice.set(ticker, Number(row.close));
+        }
+      }
+    }
+  }
+
   // 6. Assemble results — include ALL tickers, even those missing quotes.
-  // Use null for current_price when no quote data exists (don't fake 0).
   for (const t of tickers) {
     const price = latestPrice.get(t.symbol) ?? null;
 
@@ -152,16 +173,9 @@ export async function loadMarketCaps(
       marketCap = ETF_AUM_FALLBACK[t.symbol] ?? null;
     }
 
-    // For stocks without market_quotes, try to derive price from latest price_history close
-    let finalPrice = price;
-    if (finalPrice == null && t.asset_class === 'stock') {
-      // Price will be sourced from price_history by the caller if needed
-      finalPrice = null;
-    }
-
     result.set(t.symbol, {
       market_cap: marketCap,
-      current_price: finalPrice,
+      current_price: price,
       company_name: nameMap.get(t.symbol) ?? t.symbol,
     });
   }
