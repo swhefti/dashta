@@ -104,45 +104,55 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             </div>
 
             <div className="flex flex-col justify-between gap-3 min-w-0">
-              {/* Price block — prominent */}
-              <div>
-                <div className="text-[9px] uppercase tracking-[0.18em] mb-0.5"
-                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                  Price
+              {/* Top group: Price → Risk/Upward → Confidence line */}
+              <div className="flex flex-col gap-3">
+                {/* Price block */}
+                <div>
+                  <div className="text-[9px] uppercase tracking-[0.18em] mb-0.5"
+                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                    Price
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-[26px] font-semibold leading-none tracking-tight"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                      {data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '—'}
+                    </div>
+                    <div className="text-[10px]"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                      {formatCap(data.market_cap)}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[26px] font-semibold leading-none tracking-tight"
-                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
-                  {data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '—'}
+
+                {/* Composite scores */}
+                <div className="flex flex-col gap-2.5">
+                  <CompositeScore
+                    label="Risk"
+                    value={Number(data.risk_score)}
+                    color="var(--accent-danger)"
+                    barClass="bar-risk"
+                  />
+                  <CompositeScore
+                    label="Upward Probability"
+                    value={Number(data.upward_probability_score)}
+                    color="var(--accent-etf)"
+                    barClass="bar-upward"
+                  />
                 </div>
-                <div className="flex items-center gap-2 mt-1.5 text-[10px]"
-                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                  <span>{formatCap(data.market_cap)}</span>
-                  <span style={{ color: 'var(--border-subtle)' }}>·</span>
-                  <span className="flex items-center gap-1" style={{ color: confColor }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
+
+                {/* Confidence — below the scores */}
+                <div className="flex items-center gap-2 text-[10px]"
+                  style={{ fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Confidence Score:</span>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
+                  <span style={{ color: confColor }}>
                     {Math.round(Number(data.confidence ?? 0))} {data.confidence_label ?? 'low'}
                   </span>
                 </div>
               </div>
 
-              {/* Fundamentals — compact 2-col stat grid */}
+              {/* Fundamentals grid — pinned to bottom so it aligns with drift's bottom edge */}
               <FundamentalGrid data={data} />
-
-              {/* Composite scores — stacked vertically */}
-              <div className="flex flex-col gap-3">
-                <CompositeScore
-                  label="Risk"
-                  value={Number(data.risk_score)}
-                  color="var(--accent-danger)"
-                  barClass="bar-risk"
-                />
-                <CompositeScore
-                  label="Upward Probability"
-                  value={Number(data.upward_probability_score)}
-                  color="var(--accent-etf)"
-                  barClass="bar-upward"
-                />
-              </div>
             </div>
           </div>
 
@@ -310,7 +320,7 @@ function CompositeScore({ label, value, color, barClass }: { label: string; valu
         <span className="text-[10px] uppercase tracking-[0.15em]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
           {label}
         </span>
-        <span className="text-2xl font-semibold leading-none" style={{ fontFamily: 'var(--font-mono)', color }}>
+        <span className="text-[20px] font-semibold leading-none" style={{ fontFamily: 'var(--font-mono)', color }}>
           {value.toFixed(1)}
         </span>
       </div>
