@@ -49,10 +49,39 @@ export async function GET(request: NextRequest) {
     for (const e of explanations) explMap.set(e.ticker, e.explanation_text);
   }
 
-  // Attach explanation to each score
+  // Load latest fundamentals per ticker for the modal stat grid
+  const tickers = (scores ?? []).map((s: any) => s.ticker);
+  const fundsMap = new Map<string, any>();
+  if (tickers.length > 0) {
+    const { data: funds } = await supabase
+      .from('fundamental_data')
+      .select('ticker, date, pe_ratio, ps_ratio, revenue_growth_yoy, profit_margin, roe, debt_to_equity')
+      .in('ticker', tickers)
+      .order('date', { ascending: false });
+    if (funds) {
+      // Keep only the latest row per ticker
+      for (const f of funds) {
+        if (!fundsMap.has(f.ticker)) fundsMap.set(f.ticker, f);
+      }
+    }
+  }
+
+  // Attach explanation + fundamentals to each score
   if (scores) {
     for (const s of scores) {
-      (s as any).explanation = explMap.get((s as any).ticker) ?? null;
+      const t = (s as any).ticker;
+      (s as any).explanation = explMap.get(t) ?? null;
+      const f = fundsMap.get(t);
+      (s as any).fundamentals = f
+        ? {
+            pe_ratio: f.pe_ratio != null ? Number(f.pe_ratio) : null,
+            ps_ratio: f.ps_ratio != null ? Number(f.ps_ratio) : null,
+            revenue_growth_yoy: f.revenue_growth_yoy != null ? Number(f.revenue_growth_yoy) : null,
+            profit_margin: f.profit_margin != null ? Number(f.profit_margin) : null,
+            roe: f.roe != null ? Number(f.roe) : null,
+            debt_to_equity: f.debt_to_equity != null ? Number(f.debt_to_equity) : null,
+          }
+        : null;
     }
   }
 

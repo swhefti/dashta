@@ -103,21 +103,30 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               <DriftMap history={history} accent={accentColor} />
             </div>
 
-            <div className="flex flex-col justify-between gap-3">
-              {/* Chips — stacked vertically */}
-              <div className="flex flex-col gap-2">
-                <ChipRow label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
-                <ChipRow label="Mkt Cap" value={formatCap(data.market_cap)} />
-                <ChipRow label="Confidence">
-                  <div className="flex items-center gap-1.5">
+            <div className="flex flex-col justify-between gap-3 min-w-0">
+              {/* Price block — prominent */}
+              <div>
+                <div className="text-[9px] uppercase tracking-[0.18em] mb-0.5"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                  Price
+                </div>
+                <div className="text-[26px] font-semibold leading-none tracking-tight"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                  {data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '—'}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 text-[10px]"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                  <span>{formatCap(data.market_cap)}</span>
+                  <span style={{ color: 'var(--border-subtle)' }}>·</span>
+                  <span className="flex items-center gap-1" style={{ color: confColor }}>
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
-                    <span className="text-[13px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: confColor }}>
-                      {Math.round(Number(data.confidence ?? 0))}
-                    </span>
-                    <span className="text-[9px] uppercase" style={{ color: confColor }}>{data.confidence_label ?? 'low'}</span>
-                  </div>
-                </ChipRow>
+                    {Math.round(Number(data.confidence ?? 0))} {data.confidence_label ?? 'low'}
+                  </span>
+                </div>
               </div>
+
+              {/* Fundamentals — compact 2-col stat grid */}
+              <FundamentalGrid data={data} />
 
               {/* Composite scores — stacked vertically */}
               <div className="flex flex-col gap-3">
@@ -214,6 +223,82 @@ function ChipRow({ label, value, children }: { label: string; value?: string; ch
       {children ?? (
         <span className="text-[13px] font-medium truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{value}</span>
       )}
+    </div>
+  );
+}
+
+function fmtRatio(v: number | null | undefined, digits = 1): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  return v.toFixed(digits);
+}
+
+function fmtPct(v: number | null | undefined, digits = 1): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const pct = v * 100;
+  const sign = pct > 0 ? '+' : '';
+  return `${sign}${pct.toFixed(digits)}%`;
+}
+
+function StatCell({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  const isMissing = value === '—';
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[9px] uppercase tracking-[0.14em]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+        {label}
+      </span>
+      <span
+        className="text-[13px] font-medium tabular-nums"
+        style={{
+          fontFamily: 'var(--font-mono)',
+          color: isMissing ? 'var(--text-muted)' : valueColor ?? 'var(--text-primary)',
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function FundamentalGrid({ data }: { data: any }) {
+  const f = data.fundamentals;
+  const allMissing =
+    !f ||
+    [f.pe_ratio, f.ps_ratio, f.revenue_growth_yoy, f.profit_margin, f.roe, f.debt_to_equity]
+      .every((v: any) => v == null);
+
+  if (allMissing) {
+    return (
+      <div className="rounded-md px-3 py-3 text-[10px] italic"
+        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+        No fundamentals available for this asset.
+      </div>
+    );
+  }
+
+  const growthColor =
+    f.revenue_growth_yoy != null
+      ? f.revenue_growth_yoy >= 0
+        ? 'var(--accent-etf)'
+        : 'var(--accent-danger)'
+      : undefined;
+  const marginColor =
+    f.profit_margin != null
+      ? f.profit_margin >= 0
+        ? 'var(--accent-etf)'
+        : 'var(--accent-danger)'
+      : undefined;
+
+  return (
+    <div
+      className="rounded-md px-3 py-2.5 grid grid-cols-2 gap-x-4 gap-y-2"
+      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}
+    >
+      <StatCell label="P/E" value={fmtRatio(f.pe_ratio)} />
+      <StatCell label="Rev YoY" value={fmtPct(f.revenue_growth_yoy)} valueColor={growthColor} />
+      <StatCell label="P/S" value={fmtRatio(f.ps_ratio)} />
+      <StatCell label="Margin" value={fmtPct(f.profit_margin)} valueColor={marginColor} />
+      <StatCell label="ROE" value={fmtPct(f.roe)} />
+      <StatCell label="D/E" value={fmtRatio(f.debt_to_equity, 2)} />
     </div>
   );
 }
