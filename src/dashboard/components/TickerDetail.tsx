@@ -97,13 +97,13 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
           {/* Two-column summary: drift on the left, chips + stacked composites on the right */}
           <div
             className="px-6 py-4 grid gap-6 items-stretch"
-            style={{ gridTemplateColumns: '230px 1fr', borderBottom: '1px solid var(--border-subtle)' }}
+            style={{ gridTemplateColumns: '2fr 1fr', borderBottom: '1px solid var(--border-subtle)' }}
           >
             <div className="flex flex-col">
               <DriftMap history={history} accent={accentColor} />
             </div>
 
-            <div className="flex flex-col justify-between gap-4 min-h-[230px]">
+            <div className="flex flex-col justify-between gap-4">
               {/* Chips row */}
               <div className="grid grid-cols-3 gap-2.5">
                 <Chip label="Price" value={data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '--'} />
@@ -291,7 +291,7 @@ function DriftMap({
 
   const VB = 100;
   const C = VB / 2;
-  const RADIUS = 42;
+  const RADIUS = 49;
   const toSvg = (dx: number, dy: number) => ({
     x: C + (dx / range) * RADIUS,
     y: C - (dy / range) * RADIUS,
@@ -306,16 +306,7 @@ function DriftMap({
     : null;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
-          Score Drift
-        </span>
-        <span className="text-[9px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-          {recent.length} {recent.length === 1 ? 'run' : 'runs'}
-        </span>
-      </div>
-
+    <>
       {mapped.length < 2 ? (
         <div className="aspect-square flex items-center justify-center rounded-lg"
           style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
@@ -324,7 +315,7 @@ function DriftMap({
           </span>
         </div>
       ) : (
-        <div className="rounded-lg p-2 relative"
+        <div className="rounded-lg relative overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid var(--border-subtle)' }}>
           <svg viewBox={`0 0 ${VB} ${VB}`} className="w-full" style={{ aspectRatio: '1 / 1', display: 'block' }}>
             {/* Outer frame */}
@@ -432,6 +423,6 @@ function DriftMap({
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
