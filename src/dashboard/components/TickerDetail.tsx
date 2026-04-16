@@ -104,21 +104,27 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             </div>
 
             <div className="flex flex-col justify-between gap-3 min-w-0">
-              {/* Top group: Price → Risk/Upward → Confidence line */}
+              {/* Top group: Price + Mkt Cap → Risk/Upward */}
               <div className="flex flex-col gap-3">
-                {/* Price block */}
-                <div>
-                  <div className="text-[9px] uppercase tracking-[0.18em] mb-0.5"
-                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                    Price
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-[26px] font-semibold leading-none tracking-tight"
+                {/* Price + Mkt Cap side by side */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] mb-0.5"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                      Price
+                    </div>
+                    <div className="text-[24px] font-semibold leading-none tracking-tight"
                       style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                       {data.current_price != null ? `$${Number(data.current_price).toFixed(2)}` : '—'}
                     </div>
-                    <div className="text-[10px]"
+                  </div>
+                  <div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] mb-0.5"
                       style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                      Mkt Cap
+                    </div>
+                    <div className="text-[18px] font-semibold leading-none tracking-tight"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                       {formatCap(data.market_cap)}
                     </div>
                   </div>
@@ -138,16 +144,6 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                     color="var(--accent-etf)"
                     barClass="bar-upward"
                   />
-                </div>
-
-                {/* Confidence — below the scores */}
-                <div className="flex items-center gap-2 text-[10px]"
-                  style={{ fontFamily: 'var(--font-mono)' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Confidence Score:</span>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: confColor }} />
-                  <span style={{ color: confColor }}>
-                    {Math.round(Number(data.confidence ?? 0))} {data.confidence_label ?? 'low'}
-                  </span>
                 </div>
               </div>
 
