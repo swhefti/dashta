@@ -70,6 +70,7 @@ function formatCap(cap: number | null): string {
 
 export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps) {
   const [visible, setVisible] = useState(false);
+  const [infoPanel, setInfoPanel] = useState<'risk' | 'upward' | null>(null);
   const accentColor = ASSET_COLORS[data.asset_class] ?? 'var(--accent-stock)';
   const { history } = useTickerHistory(data.ticker, horizon, mode);
   const confColor = CONF_COLORS[data.confidence_label] ?? CONF_COLORS.low;
@@ -209,10 +210,8 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               <div>
                 <FactorSectionHeader
                   title="Risk Factors"
-                  intro="These factors combine into the ticker's risk score. Higher values usually mean more downside or instability."
-                  factors={RISK_FACTORS}
-                  weights={RISK_WEIGHTS[horizon] ?? RISK_WEIGHTS[3]}
-                  horizon={horizon}
+                  isOpen={infoPanel === 'risk'}
+                  onToggle={() => setInfoPanel((v) => v === 'risk' ? null : 'risk')}
                 />
                 <div className="space-y-1.5">
                   <FactorRow label="Volatility" value={data.volatility_score} />
@@ -225,10 +224,8 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               <div>
                 <FactorSectionHeader
                   title="Upward Factors"
-                  intro="These factors combine into the ticker's upward score. Higher values usually mean a stronger setup for upside."
-                  factors={UPWARD_FACTORS}
-                  weights={UPWARD_WEIGHTS[horizon] ?? UPWARD_WEIGHTS[3]}
-                  horizon={horizon}
+                  isOpen={infoPanel === 'upward'}
+                  onToggle={() => setInfoPanel((v) => v === 'upward' ? null : 'upward')}
                 />
                 <div className="space-y-1.5">
                   <FactorRow label="Momentum" value={data.trend_momentum_score} />
@@ -241,6 +238,15 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               </div>
             </div>
           </div>
+
+          {/* Factor info panel — full-width, appears below factor grid */}
+          {infoPanel && (
+            <FactorInfoPanel
+              type={infoPanel}
+              horizon={horizon}
+              onClose={() => setInfoPanel(null)}
+            />
+          )}
 
           {/* Disclaimer */}
           <div className="px-6 pb-3">
@@ -361,96 +367,100 @@ function FundamentalGrid({ data }: { data: any }) {
 
 function FactorSectionHeader({
   title,
-  intro,
-  factors,
-  weights,
-  horizon,
+  isOpen,
+  onToggle,
 }: {
   title: string;
-  intro: string;
-  factors: FactorInfo[];
-  weights: Record<string, number>;
-  horizon: number;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <h4 className="text-[9px] font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--text-muted)' }}>
+        {title}
+      </h4>
+      <button
+        onClick={onToggle}
+        className="p-0.5 rounded transition-colors hover:bg-white/[0.06]"
+        style={{ color: isOpen ? 'var(--text-secondary)' : 'var(--text-muted)' }}
+        aria-label={`What do ${title.toLowerCase()} mean?`}
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="8" r="6.5" />
+          <path d="M6.5 6.5a1.5 1.5 0 1 1 1.5 1.5V9.5" />
+          <circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
-  const close = useCallback(() => setOpen(false), []);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('mousedown', onClick);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('mousedown', onClick);
-    };
-  }, [open, close]);
+function FactorInfoPanel({
+  type,
+  horizon,
+  onClose,
+}: {
+  type: 'risk' | 'upward';
+  horizon: number;
+  onClose: () => void;
+}) {
+  const isRisk = type === 'risk';
+  const factors = isRisk ? RISK_FACTORS : UPWARD_FACTORS;
+  const weights = isRisk
+    ? (RISK_WEIGHTS[horizon] ?? RISK_WEIGHTS[3])
+    : (UPWARD_WEIGHTS[horizon] ?? UPWARD_WEIGHTS[3]);
+  const intro = isRisk
+    ? 'These factors combine into the risk score. Higher values usually mean more downside or instability.'
+    : 'These factors combine into the upward score. Higher values usually mean a stronger setup for upside.';
+  const title = isRisk ? 'Risk Factors' : 'Upward Factors';
 
   return (
-    <div ref={ref} className="relative mb-2">
-      <div className="flex items-center justify-between">
-        <h4 className="text-[9px] font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--text-muted)' }}>
-          {title}
-        </h4>
+    <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border-subtle)', background: 'rgba(14, 18, 28, 0.5)' }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h4 className="text-[9px] font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--text-muted)' }}>
+            {title} — Explained
+          </h4>
+          <span className="text-[9px] tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            {horizon}mo weights
+          </span>
+        </div>
         <button
-          onClick={() => setOpen((v) => !v)}
+          onClick={onClose}
           className="p-0.5 rounded transition-colors hover:bg-white/[0.06]"
-          style={{ color: open ? 'var(--text-secondary)' : 'var(--text-muted)' }}
-          aria-label={`What do ${title.toLowerCase()} mean?`}
+          style={{ color: 'var(--text-muted)' }}
+          aria-label="Close"
         >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="8" cy="8" r="6.5" />
-            <path d="M6.5 6.5a1.5 1.5 0 1 1 1.5 1.5V9.5" />
-            <circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none" />
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+            <path d="M4.5 4.5L11.5 11.5M11.5 4.5L4.5 11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
           </svg>
         </button>
       </div>
 
-      {open && (
-        <div
-          className="absolute z-50 rounded-lg shadow-xl overflow-y-auto"
-          style={{
-            top: '100%',
-            right: 0,
-            marginTop: 6,
-            width: 300,
-            maxHeight: 340,
-            background: 'rgba(14, 18, 28, 0.96)',
-            border: '1px solid var(--border-subtle)',
-            backdropFilter: 'blur(16px)',
-          }}
-        >
-          <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {intro}
+      <p className="text-[10px] leading-relaxed mb-3" style={{ color: 'var(--text-secondary)' }}>
+        {intro}
+      </p>
+
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+        {factors.map((f) => (
+          <div key={f.name}>
+            <div className="flex items-baseline justify-between gap-2 mb-0.5">
+              <span className="text-[11px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                {f.name}
+              </span>
+              <span className="text-[9px] tabular-nums flex-shrink-0" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                {weights[f.name] ?? '?'}%
+              </span>
+            </div>
+            <p className="text-[10px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
+              {f.means}
+            </p>
+            <p className="text-[10px] leading-snug mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {f.effect}
             </p>
           </div>
-          <div className="px-4 pb-3 flex flex-col gap-3">
-            {factors.map((f) => (
-              <div key={f.name}>
-                <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                  <span className="text-[11px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
-                    {f.name}
-                  </span>
-                  <span className="text-[9px] tabular-nums flex-shrink-0" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                    {weights[f.name] ?? '?'}% at {horizon}mo
-                  </span>
-                </div>
-                <p className="text-[10px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
-                  {f.means}
-                </p>
-                <p className="text-[10px] leading-snug mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {f.effect}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
