@@ -1,7 +1,45 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTickerHistory } from '../lib/hooks';
+
+// ── Factor explanation data & weights ──
+
+type FactorInfo = {
+  name: string;
+  means: string;
+  effect: string;
+};
+
+const RISK_FACTORS: FactorInfo[] = [
+  { name: 'Volatility', means: 'How much the price tends to swing day-to-day.', effect: 'Higher volatility pushes the risk score up.' },
+  { name: 'Drawdown', means: 'The worst peak-to-trough decline in the lookback window.', effect: 'Deeper drawdowns push the risk score up.' },
+  { name: 'Beta', means: 'How sensitive the price is to broad market moves.', effect: 'Higher beta means more market exposure, pushing risk up.' },
+  { name: 'Liquidity', means: 'How easily shares can be traded without moving the price.', effect: 'Lower liquidity pushes the risk score up.' },
+  { name: 'Fragility', means: 'Financial health based on debt levels and coverage ratios.', effect: 'Weaker balance sheets push the risk score up.' },
+];
+
+const UPWARD_FACTORS: FactorInfo[] = [
+  { name: 'Momentum', means: 'The strength and direction of the current price trend.', effect: 'Stronger positive trend pushes the upward score higher.' },
+  { name: 'Reversion', means: 'Whether the price is stretched relative to its recent range (RSI).', effect: 'Oversold conditions push the upward score higher.' },
+  { name: 'Value', means: 'How attractively priced the asset is on fundamentals (P/E, PEG, earnings growth).', effect: 'Cheaper valuations push the upward score higher.' },
+  { name: 'Sentiment', means: 'The tone of recent news coverage for this ticker.', effect: 'More positive sentiment pushes the upward score higher.' },
+  { name: 'Regime', means: 'Whether the current macro environment favors this asset class.', effect: 'Favorable macro regime pushes the upward score higher.' },
+  { name: 'Seasonal', means: 'How often this asset has risen over the same calendar period historically.', effect: 'Higher historical win rate pushes the upward score higher.' },
+];
+
+// Weights from db/migrations/002_seed_weights.sql — indexed by horizon
+const RISK_WEIGHTS: Record<number, Record<string, number>> = {
+  3:  { Volatility: 30, Drawdown: 25, Beta: 15, Liquidity: 15, Fragility: 15 },
+  6:  { Volatility: 28, Drawdown: 22, Beta: 15, Liquidity: 15, Fragility: 20 },
+  12: { Volatility: 25, Drawdown: 20, Beta: 15, Liquidity: 15, Fragility: 25 },
+};
+
+const UPWARD_WEIGHTS: Record<number, Record<string, number>> = {
+  3:  { Momentum: 25, Reversion: 15, Value: 20, Sentiment: 20, Regime: 10, Seasonal: 10 },
+  6:  { Momentum: 20, Reversion: 12, Value: 25, Sentiment: 20, Regime: 10, Seasonal: 13 },
+  12: { Momentum: 15, Reversion: 10, Value: 30, Sentiment: 20, Regime: 10, Seasonal: 15 },
+};
 
 interface TickerDetailProps {
   data: any;
@@ -169,7 +207,13 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
           <div className="px-6 py-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-0">
               <div>
-                <h4 className="text-[9px] font-medium uppercase tracking-[0.15em] mb-2" style={{ color: 'var(--text-muted)' }}>Risk Factors</h4>
+                <FactorSectionHeader
+                  title="Risk Factors"
+                  intro="These factors combine into the ticker's risk score. Higher values usually mean more downside or instability."
+                  factors={RISK_FACTORS}
+                  weights={RISK_WEIGHTS[horizon] ?? RISK_WEIGHTS[3]}
+                  horizon={horizon}
+                />
                 <div className="space-y-1.5">
                   <FactorRow label="Volatility" value={data.volatility_score} />
                   <FactorRow label="Drawdown" value={data.max_drawdown_score} />
@@ -179,7 +223,13 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 </div>
               </div>
               <div>
-                <h4 className="text-[9px] font-medium uppercase tracking-[0.15em] mb-2" style={{ color: 'var(--text-muted)' }}>Upward Factors</h4>
+                <FactorSectionHeader
+                  title="Upward Factors"
+                  intro="These factors combine into the ticker's upward score. Higher values usually mean a stronger setup for upside."
+                  factors={UPWARD_FACTORS}
+                  weights={UPWARD_WEIGHTS[horizon] ?? UPWARD_WEIGHTS[3]}
+                  horizon={horizon}
+                />
                 <div className="space-y-1.5">
                   <FactorRow label="Momentum" value={data.trend_momentum_score} />
                   <FactorRow label="Reversion" value={data.mean_reversion_score} />
@@ -305,6 +355,102 @@ function FundamentalGrid({ data }: { data: any }) {
       <StatCell label="Margin" value={fmtPct(f.profit_margin)} valueColor={marginColor} />
       <StatCell label="ROE" value={fmtPct(f.roe)} />
       <StatCell label="D/E" value={fmtRatio(f.debt_to_equity, 2)} />
+    </div>
+  );
+}
+
+function FactorSectionHeader({
+  title,
+  intro,
+  factors,
+  weights,
+  horizon,
+}: {
+  title: string;
+  intro: string;
+  factors: FactorInfo[];
+  weights: Record<string, number>;
+  horizon: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onClick);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onClick);
+    };
+  }, [open, close]);
+
+  return (
+    <div ref={ref} className="relative mb-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[9px] font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--text-muted)' }}>
+          {title}
+        </h4>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="p-0.5 rounded transition-colors hover:bg-white/[0.06]"
+          style={{ color: open ? 'var(--text-secondary)' : 'var(--text-muted)' }}
+          aria-label={`What do ${title.toLowerCase()} mean?`}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="8" r="6.5" />
+            <path d="M6.5 6.5a1.5 1.5 0 1 1 1.5 1.5V9.5" />
+            <circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
+      </div>
+
+      {open && (
+        <div
+          className="absolute z-50 rounded-lg shadow-xl overflow-y-auto"
+          style={{
+            top: '100%',
+            right: 0,
+            marginTop: 6,
+            width: 300,
+            maxHeight: 340,
+            background: 'rgba(14, 18, 28, 0.96)',
+            border: '1px solid var(--border-subtle)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <div className="px-4 pt-3 pb-2">
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {intro}
+            </p>
+          </div>
+          <div className="px-4 pb-3 flex flex-col gap-3">
+            {factors.map((f) => (
+              <div key={f.name}>
+                <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                  <span className="text-[11px] font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {f.name}
+                  </span>
+                  <span className="text-[9px] tabular-nums flex-shrink-0" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                    {weights[f.name] ?? '?'}% at {horizon}mo
+                  </span>
+                </div>
+                <p className="text-[10px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
+                  {f.means}
+                </p>
+                <p className="text-[10px] leading-snug mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {f.effect}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
