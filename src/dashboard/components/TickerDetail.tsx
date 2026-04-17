@@ -204,8 +204,8 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             )}
           </div>
 
-          {/* Factor breakdown — two-column grid */}
-          <div className="px-6 py-4">
+          {/* Factor breakdown — two-column grid with overlay popover */}
+          <div className="px-6 py-4 relative">
             <div className="grid grid-cols-2 gap-x-8 gap-y-0">
               <div>
                 <FactorSectionHeader
@@ -237,16 +237,16 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Factor info panel — full-width, appears below factor grid */}
-          {infoPanel && (
-            <FactorInfoPanel
-              type={infoPanel}
-              horizon={horizon}
-              onClose={() => setInfoPanel(null)}
-            />
-          )}
+            {/* Popover overlay — covers the factor grid */}
+            {infoPanel && (
+              <FactorInfoPanel
+                type={infoPanel}
+                horizon={horizon}
+                onClose={() => setInfoPanel(null)}
+              />
+            )}
+          </div>
 
           {/* Disclaimer */}
           <div className="px-6 pb-3">
@@ -415,7 +415,8 @@ function FactorInfoPanel({
   const title = isRisk ? 'Risk Factors' : 'Upward Factors';
 
   return (
-    <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border-subtle)', background: 'rgba(14, 18, 28, 0.5)' }}>
+    <div className="absolute inset-0 z-10 rounded-md px-6 py-4 overflow-y-auto"
+      style={{ background: 'rgba(14, 18, 28, 0.97)', backdropFilter: 'blur(8px)' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h4 className="text-[9px] font-medium uppercase tracking-[0.15em]" style={{ color: 'var(--text-muted)' }}>
