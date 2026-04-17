@@ -133,6 +133,15 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
             </div>
           </div>
 
+          {/* Explanation — below header, above the grid */}
+          {data.explanation && (
+            <div className="px-6 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)', lineHeight: '1.65' }}>
+                {data.explanation}
+              </p>
+            </div>
+          )}
+
           {/* Two-column summary: drift on the left, chips + stacked composites on the right */}
           <div
             className="px-6 py-4 grid gap-5 items-stretch"
@@ -189,19 +198,6 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               {/* Fundamentals grid — pinned to bottom so it aligns with drift's bottom edge */}
               <FundamentalGrid data={data} />
             </div>
-          </div>
-
-          {/* Explanation — full width */}
-          <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {data.explanation ? (
-              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-primary)', lineHeight: '1.7' }}>
-                {data.explanation}
-              </p>
-            ) : (
-              <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
-                Explanation will be generated on the next scoring run.
-              </p>
-            )}
           </div>
 
           {/* Factor breakdown — two-column grid with overlay popover */}
