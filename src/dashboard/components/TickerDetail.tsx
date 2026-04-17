@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useTickerHistory } from '../lib/hooks';
+import { useTickerHistory, usePriceHistory } from '../lib/hooks';
+import { PriceChart } from './PriceChart';
 
 // ── Factor explanation data & weights ──
 
@@ -71,8 +72,10 @@ function formatCap(cap: number | null): string {
 export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps) {
   const [visible, setVisible] = useState(false);
   const [infoPanel, setInfoPanel] = useState<'risk' | 'upward' | null>(null);
+  const [priceRange, setPriceRange] = useState('30d');
   const accentColor = ASSET_COLORS[data.asset_class] ?? 'var(--accent-stock)';
   const { history } = useTickerHistory(data.ticker, horizon, mode);
+  const { prices, isLoading: pricesLoading } = usePriceHistory(data.ticker, priceRange);
   const confColor = CONF_COLORS[data.confidence_label] ?? CONF_COLORS.low;
 
   useEffect(() => {
@@ -141,6 +144,15 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               </p>
             </div>
           )}
+
+          {/* Price chart */}
+          <PriceChart
+            prices={prices}
+            isLoading={pricesLoading}
+            range={priceRange}
+            onRangeChange={setPriceRange}
+            accent={accentColor}
+          />
 
           {/* Two-column summary: drift on the left, chips + stacked composites on the right */}
           <div

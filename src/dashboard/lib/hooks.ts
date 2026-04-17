@@ -80,6 +80,39 @@ export function useTickerHistory(ticker: string | null, horizon: number, mode: s
   return { history, isLoading };
 }
 
+export interface PricePoint {
+  date: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number;
+  volume: number | null;
+}
+
+export function usePriceHistory(ticker: string | null, range: string): { prices: PricePoint[]; isLoading: boolean } {
+  const [prices, setPrices] = useState<PricePoint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!ticker) { setPrices([]); return; }
+    setIsLoading(true);
+    fetch(`/api/prices/history?ticker=${encodeURIComponent(ticker)}&range=${range}`)
+      .then((res) => res.json())
+      .then((d) => setPrices((d.prices ?? []).map((p: any) => ({
+        ...p,
+        close: Number(p.close),
+        open: p.open != null ? Number(p.open) : null,
+        high: p.high != null ? Number(p.high) : null,
+        low: p.low != null ? Number(p.low) : null,
+        volume: p.volume != null ? Number(p.volume) : null,
+      }))))
+      .catch(() => setPrices([]))
+      .finally(() => setIsLoading(false));
+  }, [ticker, range]);
+
+  return { prices, isLoading };
+}
+
 export interface BriefTicker {
   ticker: string;
   company_name: string | null;
