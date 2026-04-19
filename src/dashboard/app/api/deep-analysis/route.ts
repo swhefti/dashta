@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const MODEL = 'claude-opus-4-20250918';
+const MODEL = 'claude-opus-4-6';
 const PROMPT_VERSION = 'v1';
 
 function getTodayZurich(): string {

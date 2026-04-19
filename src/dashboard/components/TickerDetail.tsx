@@ -96,15 +96,15 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-30 transition-opacity duration-300"
+        className="fixed inset-0 z-[80] transition-opacity duration-300"
         style={{ background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', opacity: visible ? 1 : 0 }}
         onClick={handleClose}
       />
 
-      {/* Centered modal */}
-      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
+      {/* Centered modal — pt-20 keeps it below the fixed header+banner */}
+      <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 pt-20 pb-4 pointer-events-none">
         <div
-          className="glass-strong rounded-xl shadow-2xl w-full max-w-[680px] max-h-[88vh] overflow-y-auto pointer-events-auto"
+          className="glass-strong rounded-xl shadow-2xl w-full max-w-[680px] max-h-[calc(100vh-96px)] overflow-y-auto pointer-events-auto"
           style={{
             transform: visible ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(12px)',
             opacity: visible ? 1 : 0,
