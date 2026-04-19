@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useTickerHistory, usePriceHistory } from '../lib/hooks';
+import { useTickerHistory, usePriceHistory, useDeepAnalysis } from '../lib/hooks';
 import { PriceChart } from './PriceChart';
 
 // ── Factor explanation data & weights ──
@@ -73,9 +73,11 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
   const [visible, setVisible] = useState(false);
   const [infoPanel, setInfoPanel] = useState<'risk' | 'upward' | null>(null);
   const [priceRange, setPriceRange] = useState('30d');
+  const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
   const accentColor = ASSET_COLORS[data.asset_class] ?? 'var(--accent-stock)';
   const { history } = useTickerHistory(data.ticker, horizon, mode);
   const { prices, isLoading: pricesLoading } = usePriceHistory(data.ticker, priceRange);
+  const deepAnalysis = useDeepAnalysis();
   const confColor = CONF_COLORS[data.confidence_label] ?? CONF_COLORS.low;
 
   useEffect(() => {
@@ -126,13 +128,52 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
                 </div>
                 <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>{data.company_name}</p>
               </div>
-              <button onClick={handleClose}
-                className="p-1.5 rounded-md transition-colors duration-150 hover:bg-white/5"
-                style={{ color: 'var(--text-muted)' }}>
-                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-                  <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    if (deepAnalysis.data || deepAnalysis.isLoading) {
+                      setShowDeepAnalysis((v) => !v);
+                      return;
+                    }
+                    setShowDeepAnalysis(true);
+                    deepAnalysis.generate({
+                      ticker: data.ticker,
+                      asset_class: data.asset_class,
+                      horizon,
+                      mode,
+                      risk_score: Number(data.risk_score),
+                      upward_probability_score: Number(data.upward_probability_score),
+                      confidence: data.confidence != null ? Number(data.confidence) : null,
+                      company_name: data.company_name,
+                      run_date: data.score_date ?? null,
+                    });
+                  }}
+                  disabled={deepAnalysis.isLoading}
+                  className="text-[10px] px-3 py-1.5 rounded-md transition-colors"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: deepAnalysis.isLoading ? 'var(--text-muted)' : 'var(--text-primary)',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  {deepAnalysis.isLoading
+                    ? 'Generating…'
+                    : deepAnalysis.data && showDeepAnalysis
+                      ? 'Hide Analysis'
+                      : deepAnalysis.data
+                        ? 'Show Analysis'
+                        : 'Generate Deep Analysis'
+                  }
+                </button>
+                <button onClick={handleClose}
+                  className="p-1.5 rounded-md transition-colors duration-150 hover:bg-white/5"
+                  style={{ color: 'var(--text-muted)' }}>
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -142,6 +183,73 @@ export function TickerDetail({ data, horizon, mode, onClose }: TickerDetailProps
               <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)', lineHeight: '1.65' }}>
                 {data.explanation}
               </p>
+            </div>
+          )}
+
+          {/* Deep Analysis section */}
+          {showDeepAnalysis && (
+            <div
+              className="px-6 py-4"
+              style={{ borderBottom: '1px solid var(--border-subtle)' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] uppercase tracking-[0.18em] font-medium"
+                  style={{ fontFamily: 'var(--font-mono)', color: accentColor }}>
+                  Deep Analysis
+                </span>
+                <div className="flex items-center gap-2">
+                  {deepAnalysis.data && (
+                    <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
+                      {deepAnalysis.data.cached ? 'cached' : 'live'} · {deepAnalysis.data.analysis_date}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setShowDeepAnalysis(false)}
+                    className="p-0.5 rounded transition-colors hover:bg-white/5"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {deepAnalysis.isLoading && (
+                <div className="flex items-center gap-2.5 py-4">
+                  <div
+                    className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0"
+                    style={{ borderColor: `${accentColor} transparent ${accentColor} ${accentColor}` }}
+                  />
+                  <span className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                    Generating analysis — this takes ~20 seconds…
+                  </span>
+                </div>
+              )}
+
+              {deepAnalysis.error && !deepAnalysis.isLoading && (
+                <div
+                  className="rounded-lg px-4 py-3 text-[12px]"
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--text-secondary)' }}
+                >
+                  <span style={{ color: 'var(--accent-danger)', fontWeight: 500 }}>Analysis unavailable. </span>
+                  {deepAnalysis.error}
+                </div>
+              )}
+
+              {deepAnalysis.data && !deepAnalysis.isLoading && (
+                <div className="space-y-3">
+                  {deepAnalysis.data.analysis.split(/\n\n+/).filter(Boolean).map((para, i) => (
+                    <p
+                      key={i}
+                      className="text-[12px] leading-relaxed"
+                      style={{ color: 'var(--text-secondary)', lineHeight: '1.7' }}
+                    >
+                      {para.trim()}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export interface ScoresData {
   run_date?: string;
@@ -111,6 +111,57 @@ export function usePriceHistory(ticker: string | null, range: string): { prices:
   }, [ticker, range]);
 
   return { prices, isLoading };
+}
+
+export interface DeepAnalysisResult {
+  analysis: string;
+  cached: boolean;
+  analysis_date: string;
+  model: string;
+  created_at: string;
+}
+
+export function useDeepAnalysis() {
+  const [data, setData] = useState<DeepAnalysisResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inflightRef = useRef(false);
+
+  const generate = useCallback(async (params: {
+    ticker: string;
+    asset_class: string;
+    horizon: number;
+    mode: string;
+    risk_score: number;
+    upward_probability_score: number;
+    confidence?: number | null;
+    company_name?: string | null;
+    run_date?: string | null;
+  }) => {
+    if (inflightRef.current) return;
+    inflightRef.current = true;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/deep-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? 'Request failed');
+      setData(d as DeepAnalysisResult);
+    } catch (err: any) {
+      setError(err.message ?? String(err));
+    } finally {
+      setIsLoading(false);
+      inflightRef.current = false;
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+
+  return { data, isLoading, error, generate, reset };
 }
 
 export interface BriefTicker {

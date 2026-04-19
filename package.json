@@ -13,6 +13,7 @@
     "score:12mo": "tsx src/cron/daily-scoring.ts --horizon=12"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@supabase/supabase-js": "^2.45.0",
     "d3": "^7.9.0",
     "next": "^14.2.0",

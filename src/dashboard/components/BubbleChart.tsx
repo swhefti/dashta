@@ -134,14 +134,14 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
       g.append('text')
         .attr('x', xScale(x)).attr('y', yScale(y))
         .attr('text-anchor', 'middle').attr('fill', color)
-        .attr('font-size', 10).attr('opacity', 0.15)
+        .attr('font-size', 20).attr('opacity', 0.18)
         .attr('font-weight', 600)
         .attr('letter-spacing', '0.12em')
         .text(label);
       g.append('text')
-        .attr('x', xScale(x)).attr('y', yScale(y) + 14)
+        .attr('x', xScale(x)).attr('y', yScale(y) + 26)
         .attr('text-anchor', 'middle').attr('fill', color)
-        .attr('font-size', 8).attr('opacity', 0.08)
+        .attr('font-size', 16).attr('opacity', 0.10)
         .text(sub);
     });
 
@@ -164,15 +164,15 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
     g.append('text')
       .attr('x', width / 2).attr('y', height - 6)
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.24)')
-      .attr('font-size', 10).attr('letter-spacing', '0.15em')
+      .attr('fill', 'rgba(255,255,255,0.34)')
+      .attr('font-size', 14).attr('letter-spacing', '0.15em')
       .text('RISK SCORE');
     g.append('text')
       .attr('x', -height / 2).attr('y', 12)
       .attr('transform', 'rotate(-90)')
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.24)')
-      .attr('font-size', 10).attr('letter-spacing', '0.15em')
+      .attr('fill', 'rgba(255,255,255,0.34)')
+      .attr('font-size', 14).attr('letter-spacing', '0.15em')
       .text('UPWARD PROBABILITY');
 
     // Bubbles
