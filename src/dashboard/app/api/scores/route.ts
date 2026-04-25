@@ -2,6 +2,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnonClient } from '../../../../shared/supabase';
 
+// Freshness thresholds — must match src/scoring/freshness.ts
+const FRESHNESS_THRESHOLDS: Record<string, { days: number; severity: 'blocked' | 'degraded'; missingBlocks: boolean }> = {
+  prices:       { days: 1,  severity: 'blocked',  missingBlocks: true  },
+  quotes:       { days: 1,  severity: 'blocked',  missingBlocks: false },
+  fundamentals: { days: 30, severity: 'degraded', missingBlocks: false },
+  sentiment:    { days: 3,  severity: 'degraded', missingBlocks: false },
+  regime:       { days: 3,  severity: 'degraded', missingBlocks: false },
+};
+
+interface FreshnessIssue {
+  source: string;
+  days_stale: number;
+  severity: 'blocked' | 'degraded';
+}
+
+function recomputeFreshness(
+  sourceFreshness: Record<string, string | null> | null,
+  runDate: string,
+): { quality: 'healthy' | 'degraded' | 'blocked'; issues: FreshnessIssue[] } {
+  if (!sourceFreshness) return { quality: 'healthy', issues: [] };
+
+  const issues: FreshnessIssue[] = [];
+  let quality: 'healthy' | 'degraded' | 'blocked' = 'healthy';
+
+  for (const [source, { days, severity, missingBlocks }] of Object.entries(FRESHNESS_THRESHOLDS)) {
+    const date = sourceFreshness[source] ?? null;
+    if (!date) {
+      if (missingBlocks) {
+        quality = 'blocked';
+        issues.push({ source, days_stale: 9999, severity: 'blocked' });
+      }
+      continue;
+    }
+    const staleDays = Math.floor(
+      (new Date(runDate).getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (staleDays > days) {
+      if (severity === 'blocked') quality = 'blocked';
+      else if (quality !== 'blocked') quality = 'degraded';
+      issues.push({ source, days_stale: staleDays, severity });
+    }
+  }
+
+  return { quality, issues };
+}
+
 export async function GET(request: NextRequest) {
   const horizon = parseInt(request.nextUrl.searchParams.get('horizon') ?? '3', 10);
   const mode = request.nextUrl.searchParams.get('mode') ?? 'percentile';
@@ -134,6 +180,13 @@ export async function GET(request: NextRequest) {
     else confDist.low++;
   }
 
+  // Recompute quality and issues on-the-fly so threshold changes take effect
+  // immediately without needing a new scoring run.
+  const { quality: computedQuality, issues: freshnessIssues } = recomputeFreshness(
+    latestRun.source_freshness as Record<string, string | null> | null,
+    latestRun.run_date,
+  );
+
   return NextResponse.json({
     run_date: latestRun.run_date,
     scored_at: latestRun.completed_at,
@@ -148,7 +201,8 @@ export async function GET(request: NextRequest) {
     },
     factor_completeness: totalF > 0 ? Math.round((availF / totalF) * 100) : 0,
     source_freshness: latestRun.source_freshness ?? null,
-    run_quality: latestRun.run_quality ?? 'healthy',
+    run_quality: computedQuality,
+    freshness_issues: freshnessIssues,
     confidence_distribution: confDist,
     available: true,
     scores: all,

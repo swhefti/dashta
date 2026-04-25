@@ -8,6 +8,7 @@ import { SearchBar } from '../components/SearchBar';
 import { ModeSelector } from '../components/ModeSelector';
 import { DailyBrief } from '../components/DailyBrief';
 import { useScores, useBrief } from '../lib/hooks';
+import type { FreshnessIssue } from '../lib/hooks';
 import type { AssetClass } from '../../shared/types';
 
 const QUALITY_STYLES: Record<string, { color: string; label: string }> = {
@@ -15,6 +16,42 @@ const QUALITY_STYLES: Record<string, { color: string; label: string }> = {
   degraded: { color: 'var(--accent-crypto)', label: 'Degraded' },
   blocked: { color: 'var(--accent-danger)', label: 'Blocked' },
 };
+
+const SOURCE_LABELS: Record<string, string> = {
+  prices: 'Price',
+  quotes: 'Quote',
+  fundamentals: 'Fundamentals',
+  sentiment: 'Sentiment',
+  regime: 'Macro regime',
+};
+
+function getFreshnessBanner(issues: FreshnessIssue[]): { text: string; isBlocked: boolean } | null {
+  if (!issues.length) return null;
+
+  const blocked = issues.filter((i) => i.severity === 'blocked');
+  const degraded = issues.filter((i) => i.severity === 'degraded');
+
+  if (blocked.length > 0) {
+    const names = blocked.map((i) => SOURCE_LABELS[i.source] ?? i.source).join(' and ');
+    const days = blocked[0]!.days_stale < 9999 ? ` (${blocked[0]!.days_stale}d old)` : '';
+    return {
+      text: `${names} data is stale${days}. Scores from this run should be treated with caution.`,
+      isBlocked: true,
+    };
+  }
+
+  const parts: string[] = [];
+  for (const issue of degraded) {
+    if (issue.source === 'fundamentals') {
+      parts.push(`Fundamentals are ${issue.days_stale}d old — long-horizon value inputs may be less current`);
+    } else if (issue.source === 'sentiment') {
+      parts.push(`Sentiment is ${issue.days_stale}d old — short-term upward signals may be less reliable`);
+    } else if (issue.source === 'regime') {
+      parts.push(`Macro regime is ${issue.days_stale}d old — regime signals may be less reliable`);
+    }
+  }
+  return parts.length ? { text: parts.join('. ') + '.', isBlocked: false } : null;
+}
 
 export default function DashboardPage() {
   const [horizon, setHorizon] = useState(3);
@@ -43,7 +80,7 @@ export default function DashboardPage() {
   const fc = data?.factor_completeness ?? 0;
   const rq = data?.run_quality ?? 'healthy';
   const qStyle = QUALITY_STYLES[rq] ?? QUALITY_STYLES.healthy;
-  const isDegraded = rq === 'degraded';
+  const banner = data?.available ? getFreshnessBanner(data.freshness_issues ?? []) : null;
 
   return (
     <main className="relative flex flex-col h-screen">
@@ -54,13 +91,27 @@ export default function DashboardPage() {
           style={{ background: 'radial-gradient(circle, var(--accent-etf) 0%, transparent 70%)' }} />
       </div>
 
-      {/* Degraded run banner */}
-      {data?.available && isDegraded && (
-        <div className="relative z-20 px-6 py-1.5 flex items-center gap-2"
-          style={{ background: 'rgba(245, 166, 35, 0.08)', borderBottom: '1px solid rgba(245, 166, 35, 0.2)' }}>
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-crypto)' }} />
-          <span className="text-[11px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crypto)' }}>
-            Degraded run — some source data is stale. Scores may be less reliable.
+      {/* Freshness banner — source-specific, proportional to severity */}
+      {banner && (
+        <div
+          className="relative z-20 px-6 py-1.5 flex items-center gap-2"
+          style={{
+            background: banner.isBlocked ? 'rgba(240, 68, 68, 0.08)' : 'rgba(245, 166, 35, 0.07)',
+            borderBottom: banner.isBlocked ? '1px solid rgba(240, 68, 68, 0.2)' : '1px solid rgba(245, 166, 35, 0.15)',
+          }}
+        >
+          <div
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{ background: banner.isBlocked ? 'var(--accent-danger)' : 'var(--accent-crypto)' }}
+          />
+          <span
+            className="text-[11px]"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: banner.isBlocked ? 'var(--accent-danger)' : 'var(--accent-crypto)',
+            }}
+          >
+            {banner.text}
           </span>
         </div>
       )}

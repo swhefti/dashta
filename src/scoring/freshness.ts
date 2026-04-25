@@ -3,7 +3,10 @@
 //
 // Rules:
 // - prices or quotes > 1 calendar day stale vs run_date → blocked
-// - fundamentals > 7 calendar days stale → degraded (they update weekly/quarterly)
+// - fundamentals > 30 calendar days stale → degraded
+//     Rationale: fundamentals are quarterly data; a 7-day threshold was
+//     too aggressive and caused false degradation between weekly refreshes.
+//     30 days means one missed weekly refresh doesn't alarm the dashboard.
 // - sentiment or regime > 3 calendar days stale → degraded
 // - All within thresholds → healthy
 
@@ -76,10 +79,10 @@ export async function checkFreshness(runDate: string): Promise<FreshnessResult> 
   }
   // quotes missing is not blocking — we handle null prices
 
-  // Non-critical: fundamentals can be older (weekly/quarterly refresh)
+  // Non-critical: fundamentals tolerate up to 30 days (quarterly data, weekly refresh)
   if (sources.fundamentals) {
     const staleDays = daysBetween(sources.fundamentals, runDate);
-    if (staleDays > 7) {
+    if (staleDays > 30) {
       if (quality !== 'blocked') quality = 'degraded';
       issues.push(`fundamentals ${staleDays}d stale (latest: ${sources.fundamentals})`);
     }

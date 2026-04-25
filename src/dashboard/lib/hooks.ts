@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+export interface FreshnessIssue {
+  source: string;
+  days_stale: number;
+  severity: 'blocked' | 'degraded';
+}
+
 export interface ScoresData {
   run_date?: string;
   scored_at?: string;
@@ -19,6 +25,7 @@ export interface ScoresData {
   factor_completeness?: number;
   source_freshness?: Record<string, string | null>;
   run_quality?: string;
+  freshness_issues?: FreshnessIssue[];
   confidence_distribution?: { high: number; medium: number; low: number };
   available?: boolean;
   error?: string;
