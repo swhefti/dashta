@@ -8,6 +8,7 @@ import { SearchBar } from '../components/SearchBar';
 import { ModeSelector } from '../components/ModeSelector';
 import { DailyBrief } from '../components/DailyBrief';
 import { OnboardingOverlay } from '../components/OnboardingOverlay';
+import { Logo } from '../components/Logo';
 import { useScores, useBrief, useCountUp } from '../lib/hooks';
 import type { FreshnessIssue } from '../lib/hooks';
 import type { AssetClass } from '../../shared/types';
@@ -161,10 +162,7 @@ export default function DashboardPage() {
       <header className="relative z-20 flex items-center justify-between px-6 py-3 border-b"
         style={{ borderColor: 'var(--border-subtle)', background: 'rgba(6, 8, 13, 0.85)', backdropFilter: 'blur(16px)' }}>
         <div className="flex items-center gap-4">
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-lg font-semibold tracking-tight" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>aiMATA</h1>
-            <span className="text-[10px] font-medium tracking-[0.15em] uppercase" style={{ color: 'var(--text-muted)' }}>Radar</span>
-          </div>
+          <h1><Logo size="sm" /></h1>
           <div className="w-px h-5" style={{ background: 'var(--border-subtle)' }} />
           <div className="flex items-center gap-2">
             {data?.run_date && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Logo } from './Logo';
 
 interface OnboardingOverlayProps {
   onGotIt: () => void;
@@ -36,17 +37,15 @@ export function OnboardingOverlay({ onGotIt, onDontShowAgain }: OnboardingOverla
 
       <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 pointer-events-none">
         <div
-          className="glass-strong rounded-lg shadow-2xl w-full max-w-[360px] pointer-events-auto"
+          className="glass-strong rounded-lg shadow-2xl w-full max-w-[400px] pointer-events-auto"
           style={{ animation: 'fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="px-5 pt-5">
-            <h2
-              className="text-[13px] font-semibold tracking-tight mb-1.5"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}
-            >
-              Risk × Upward Probability Radar
-            </h2>
+            <h2 className="mb-2.5"><Logo size="lg" /></h2>
+            <p className="text-[11px] italic mb-2" style={{ color: 'var(--text-muted)' }}>
+              Every asset, on the radar.
+            </p>
             <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               Each bubble is a stock, ETF, or crypto asset.
             </p>
