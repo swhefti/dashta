@@ -104,15 +104,18 @@ input:focus, button:focus-visible {
   50% { box-shadow: 0 0 12px 2px rgba(79, 143, 247, 0.15); }
 }
 
-/* Slow, subtle pulse for the "Healthy" status dot — deliberately gentler
-   and slower than Tailwind's default animate-pulse. */
-@keyframes statusPulseHealthy {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.45; transform: scale(1.2); }
+/* "Live" status ring for the healthy status dot — a slowed-down take on
+   the classic ping-ring pattern (Tailwind's animate-ping is 1s; this is a
+   calmer 2.2s so it reads as alive without being flashy). A plain
+   opacity/scale pulse on a 4px dot alone turned out too subtle to notice;
+   the expanding ring behind the dot is what actually catches the eye. */
+@keyframes statusPing {
+  0% { transform: scale(1); opacity: 0.6; }
+  75%, 100% { transform: scale(3.5); opacity: 0; }
 }
-.status-dot-pulse {
-  animation: statusPulseHealthy 2.4s ease-in-out infinite;
+.status-ping {
+  animation: statusPing 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .status-dot-pulse { animation: none; }
+  .status-ping { display: none; }
 }

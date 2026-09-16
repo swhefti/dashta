@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, type MutableRefObject } from 'react';
 import * as d3 from 'd3';
 import { TickerTooltip } from './TickerTooltip';
 import { TickerDetail } from './TickerDetail';
@@ -16,15 +16,19 @@ interface BubbleChartProps {
   highlightTicker: string | null;
   horizon: number;
   mode?: string;
+  // Owned by the parent, not this component: BubbleChart unmounts and
+  // remounts on every horizon/mode switch (the parent only renders it once
+  // !isLoading), so an internal ref would reset — and replay the entrance —
+  // on every switch instead of playing once per page view.
+  hasAnimatedRef: MutableRefObject<boolean>;
 }
 
-export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percentile' }: BubbleChartProps) {
+export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percentile', hasAnimatedRef }: BubbleChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: any } | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<any>(null);
   const [sizeTick, setSizeTick] = useState(0);
-  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { BubbleChart } from '../components/BubbleChart';
 import { HorizonSelector } from '../components/HorizonSelector';
 import { AssetFilter } from '../components/AssetFilter';
@@ -59,12 +59,21 @@ export default function DashboardPage() {
   const [mode, setMode] = useState('percentile');
   const [activeClasses, setActiveClasses] = useState<Set<AssetClass>>(new Set(['stock', 'etf', 'crypto']));
   const [searchTicker, setSearchTicker] = useState<string | null>(null);
-  const [briefCollapsed, setBriefCollapsed] = useState(false);
+  // Collapsed by default — a first-time visitor should see the chart first,
+  // not a wall of text next to it. Any prior explicit preference wins.
+  const [briefCollapsed, setBriefCollapsed] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  // Lives on the parent (not inside BubbleChart) because BubbleChart itself
+  // unmounts/remounts on every horizon/mode switch — see the isLoading gate
+  // below. A ref here is the only thing that actually survives that churn,
+  // so the entrance animation plays exactly once per page view, not once
+  // per switch.
+  const hasChartAnimatedRef = useRef(false);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem('briefCollapsed') : null;
     if (stored === '1') setBriefCollapsed(true);
+    else if (stored === '0') setBriefCollapsed(false);
   }, []);
 
   useEffect(() => {
@@ -73,12 +82,19 @@ export default function DashboardPage() {
     }
   }, [briefCollapsed]);
 
+  const { data, isLoading, error } = useScores(horizon, mode);
+
+  // Delay the onboarding overlay until the first data load has settled, so
+  // it never covers the bubble entrance animation before a visitor gets to
+  // see it play. 950ms is the entrance's own worst-case total duration.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || isLoading) return;
     const dismissedPermanently = window.localStorage.getItem('onboardingDismissed') === '1';
     const seenThisSession = window.sessionStorage.getItem('onboardingSeen') === '1';
-    if (!dismissedPermanently && !seenThisSession) setShowOnboarding(true);
-  }, []);
+    if (dismissedPermanently || seenThisSession) return;
+    const t = setTimeout(() => setShowOnboarding(true), 950);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   const dismissOnboarding = (permanent: boolean) => {
     setShowOnboarding(false);
@@ -87,10 +103,18 @@ export default function DashboardPage() {
     if (permanent) window.localStorage.setItem('onboardingDismissed', '1');
   };
 
-  const { data, isLoading, error } = useScores(horizon, mode);
   const { data: brief, isLoading: briefLoading } = useBrief(horizon, mode);
 
-  const filteredData = data?.scores?.filter((s: any) => activeClasses.has(s.asset_class)) ?? [];
+  // Memoized: BubbleChart's redraw effect keys off this array's identity.
+  // A plain .filter() here would return a new reference on every render
+  // (including the ~50 renders useCountUp below produces while ticking its
+  // display value), tearing down and rebuilding the whole chart on every
+  // one of those frames and killing the entrance transition almost as soon
+  // as it starts.
+  const filteredData = useMemo(
+    () => data?.scores?.filter((s: any) => activeClasses.has(s.asset_class)) ?? [],
+    [data?.scores, activeClasses],
+  );
   const tickerCount = filteredData.length;
   const noData = data?.available === false;
   const fc = data?.factor_completeness ?? 0;
@@ -159,10 +183,15 @@ export default function DashboardPage() {
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1"
                   style={{ fontFamily: 'var(--font-mono)', color: qStyle.color, background: 'var(--border-subtle)' }}>
-                  <span
-                    className={`w-1 h-1 rounded-full ${rq === 'healthy' ? 'status-dot-pulse' : ''}`}
-                    style={{ background: qStyle.color }}
-                  />
+                  <span className="relative w-1 h-1 flex items-center justify-center">
+                    {rq === 'healthy' && (
+                      <span
+                        className="status-ping absolute inset-0 rounded-full"
+                        style={{ background: qStyle.color }}
+                      />
+                    )}
+                    <span className="relative w-1 h-1 rounded-full" style={{ background: qStyle.color }} />
+                  </span>
                   {qStyle.label}
                 </span>
               </>
@@ -206,7 +235,13 @@ export default function DashboardPage() {
             </div>
           )}
           {!isLoading && !error && !noData && (
-            <BubbleChart scores={filteredData} highlightTicker={searchTicker} horizon={horizon} mode={mode} />
+            <BubbleChart
+              scores={filteredData}
+              highlightTicker={searchTicker}
+              horizon={horizon}
+              mode={mode}
+              hasAnimatedRef={hasChartAnimatedRef}
+            />
           )}
         </div>
 
