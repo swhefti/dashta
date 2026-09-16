@@ -15,6 +15,12 @@ const LEGEND: { label: string; desc: string }[] = [
   { label: 'color', desc: 'asset class' },
 ];
 
+// Two text sizes, three colors — everything below maps onto this palette
+// on purpose, so adding more copy doesn't turn into visual noise.
+const BODY = { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 } as const;
+const LABEL = { fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' } as const;
+const META = { fontSize: 10, color: 'var(--text-muted)' } as const;
+
 export function OnboardingOverlay({ onGotIt, onDontShowAgain }: OnboardingOverlayProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -43,46 +49,49 @@ export function OnboardingOverlay({ onGotIt, onDontShowAgain }: OnboardingOverla
         >
           <div className="px-5 pt-5">
             <h2 className="mb-2.5"><Logo size="lg" /></h2>
-            <p className="text-[11px] italic mb-2" style={{ color: 'var(--text-muted)' }}>
-              Every asset, on the radar.
-            </p>
-            <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Each bubble is a stock, ETF, or crypto asset.
+            <p className="italic mb-2" style={META}>Every asset, on the radar.</p>
+            <p style={BODY}>
+              Each bubble is a stock, ETF, or crypto asset — 130+ tracked, refreshed daily.
+              Switch the outlook with 3mo / 6mo / 12mo, or toggle Relative vs. Absolute
+              scoring, in the header.
             </p>
           </div>
 
-          <div className="px-5 py-3.5 flex flex-wrap gap-x-3 gap-y-1">
-            {LEGEND.map(({ label, desc }) => (
-              <span key={label} className="text-[11px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                <span style={{ color: 'var(--text-primary)' }}>{label}</span> {desc}
-              </span>
-            ))}
+          <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <div className="grid gap-y-1" style={{ gridTemplateColumns: '52px 1fr' }}>
+              {LEGEND.map(({ label, desc }) => (
+                <div key={label} className="contents">
+                  <span style={{ ...LABEL, fontFamily: 'var(--font-mono)' }}>{label}</span>
+                  <span style={BODY}>{desc}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="px-5 py-3 space-y-1" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-              Scroll to zoom, drag to pan, click a bubble for the full breakdown and AI deep analysis.
+          <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <p style={BODY}>
+              Scroll to zoom, drag to pan, search or filter by asset class in the header,
+              and click any bubble for its full breakdown plus AI deep analysis. The
+              collapsed panel on the right holds a daily brief — expand it for today's
+              biggest movers.
             </p>
           </div>
 
           <div className="px-5 pb-2">
-            <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
-              Informational only. Not financial advice.
-            </p>
+            <p style={META}>Informational only. Not financial advice.</p>
           </div>
 
           <div className="px-5 pb-4 pt-2 flex items-center justify-between">
             <button
               onClick={onDontShowAgain}
-              className="text-[10px]"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}
+              style={{ ...META, fontFamily: 'var(--font-mono)' }}
             >
               Don't show again
             </button>
             <button
               onClick={onGotIt}
-              className="text-[11px] px-4 py-1.5 rounded font-medium"
-              style={{ fontFamily: 'var(--font-mono)', color: '#06080d', background: 'var(--accent-stock)' }}
+              className="px-4 py-1.5 rounded font-medium"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#06080d', background: 'var(--accent-stock)' }}
             >
               Got it
             </button>

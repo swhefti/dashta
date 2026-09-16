@@ -3,8 +3,8 @@ interface LogoProps {
 }
 
 const SIZES = {
-  sm: { icon: 26, main: 15, sub: 12.5, radar: 13, gap: 10 },
-  lg: { icon: 40, main: 22, sub: 17, radar: 18, gap: 14 },
+  sm: { icon: 26, main: 15, sub: 12.5, radar: 10, gap: 10 },
+  lg: { icon: 40, main: 22, sub: 17, radar: 14, gap: 14 },
 };
 
 export function Logo({ size = 'sm' }: LogoProps) {
@@ -27,10 +27,10 @@ export function Logo({ size = 'sm' }: LogoProps) {
         <div
           style={{
             fontFamily: 'var(--font-display)',
-            fontWeight: 700,
+            fontWeight: 500,
             fontSize: s.radar,
             letterSpacing: '0.14em',
-            color: 'var(--accent-stock)',
+            color: 'var(--text-secondary)',
             marginTop: size === 'lg' ? 4 : 2,
           }}
         >
