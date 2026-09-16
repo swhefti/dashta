@@ -207,6 +207,52 @@ export interface BriefData {
   };
 }
 
+/**
+ * Animates a displayed number toward `value` over `duration` ms using
+ * requestAnimationFrame. Counts up from 0 on first mount, and from the
+ * previously-settled value on later changes. Jumps straight to `value`
+ * under prefers-reduced-motion.
+ */
+export function useCountUp(value: number, duration: number = 800): number {
+  const [display, setDisplay] = useState(0);
+  const displayRef = useRef(0);
+  const frameRef = useRef<number | null>(null);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const from = mountedRef.current ? displayRef.current : 0;
+    const to = value;
+    mountedRef.current = true;
+
+    if (frameRef.current != null) cancelAnimationFrame(frameRef.current);
+
+    if (prefersReducedMotion || from === to) {
+      displayRef.current = to;
+      setDisplay(to);
+      return;
+    }
+
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = Math.round(from + (to - from) * eased);
+      displayRef.current = current;
+      setDisplay(current);
+      if (t < 1) frameRef.current = requestAnimationFrame(tick);
+    };
+    frameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (frameRef.current != null) cancelAnimationFrame(frameRef.current);
+    };
+  }, [value, duration]);
+
+  return display;
+}
+
 export function useBrief(horizon: number, mode: string): { data: BriefData | null; isLoading: boolean; error: string | null } {
   const [data, setData] = useState<BriefData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

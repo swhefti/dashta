@@ -24,6 +24,7 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: any } | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<any>(null);
   const [sizeTick, setSizeTick] = useState(0);
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -83,6 +84,17 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
     const radiusScale = d3.scaleSqrt()
       .domain([d3.min(marketCaps) ?? 1, d3.max(marketCaps) ?? 1e12])
       .range([3, 32]);
+
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const shouldAnimateEntrance = !hasAnimatedRef.current && !prefersReducedMotion;
+    hasAnimatedRef.current = true;
+
+    const finalRadius = (d: any) => radiusScale(d.market_cap ?? 1);
+    const finalFillOpacity = (d: any) => {
+      if (highlightTicker && d.ticker !== highlightTicker) return 0.08;
+      return 0.55;
+    };
 
     const g = svg.append('g');
 
@@ -185,13 +197,10 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
         `translate(${xScale(d.risk_score)},${yScale(d.upward_probability_score)})`
       );
 
-    bubbles.append('circle')
-      .attr('r', (d: any) => radiusScale(d.market_cap ?? 1))
+    const circles = bubbles.append('circle')
+      .attr('r', shouldAnimateEntrance ? 0 : finalRadius)
       .attr('fill', (d: any) => CHART_COLORS[d.asset_class] ?? '#4f8ff7')
-      .attr('fill-opacity', (d: any) => {
-        if (highlightTicker && d.ticker !== highlightTicker) return 0.08;
-        return 0.55;
-      })
+      .attr('fill-opacity', shouldAnimateEntrance ? 0 : finalFillOpacity)
       .attr('stroke', (d: any) => {
         if (highlightTicker === d.ticker) return '#ffffff';
         return CHART_COLORS[d.asset_class] ?? '#4f8ff7';
@@ -203,7 +212,6 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
       .attr('stroke-width', (d: any) => highlightTicker === d.ticker ? 2 : 0.5)
       .attr('filter', (d: any) => highlightTicker === d.ticker ? 'url(#glow)' : 'none')
       .style('cursor', 'pointer')
-      .style('transition', 'fill-opacity 0.2s, stroke-opacity 0.2s')
       .on('mouseenter', function (event: any, d: any) {
         d3.select(this).attr('fill-opacity', 0.85).attr('stroke-opacity', 0.8).attr('stroke-width', 1.5);
         setTooltip({ x: event.pageX, y: event.pageY, data: d });
@@ -217,6 +225,24 @@ export function BubbleChart({ scores, highlightTicker, horizon, mode = 'percenti
         setTooltip(null);
       })
       .on('click', (_event: any, d: any) => setSelectedTicker(d));
+
+    if (shouldAnimateEntrance) {
+      // Entrance plays once on first mount only; hover CSS transition is
+      // withheld until each bubble's own entrance finishes so the two
+      // transitions don't fight over fill-opacity at the same time.
+      circles
+        .transition()
+        .delay((_d: any, i: number) => Math.min(i * 4, 400))
+        .duration(550)
+        .ease(d3.easeCubicOut)
+        .attr('r', finalRadius)
+        .attr('fill-opacity', finalFillOpacity)
+        .on('end', function () {
+          d3.select(this).style('transition', 'fill-opacity 0.2s, stroke-opacity 0.2s');
+        });
+    } else {
+      circles.style('transition', 'fill-opacity 0.2s, stroke-opacity 0.2s');
+    }
 
     // Labels
     const labels = bubbles.append('text')

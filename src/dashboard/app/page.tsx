@@ -7,7 +7,8 @@ import { AssetFilter } from '../components/AssetFilter';
 import { SearchBar } from '../components/SearchBar';
 import { ModeSelector } from '../components/ModeSelector';
 import { DailyBrief } from '../components/DailyBrief';
-import { useScores, useBrief } from '../lib/hooks';
+import { OnboardingOverlay } from '../components/OnboardingOverlay';
+import { useScores, useBrief, useCountUp } from '../lib/hooks';
 import type { FreshnessIssue } from '../lib/hooks';
 import type { AssetClass } from '../../shared/types';
 
@@ -59,6 +60,7 @@ export default function DashboardPage() {
   const [activeClasses, setActiveClasses] = useState<Set<AssetClass>>(new Set(['stock', 'etf', 'crypto']));
   const [searchTicker, setSearchTicker] = useState<string | null>(null);
   const [briefCollapsed, setBriefCollapsed] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem('briefCollapsed') : null;
@@ -71,6 +73,20 @@ export default function DashboardPage() {
     }
   }, [briefCollapsed]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const dismissedPermanently = window.localStorage.getItem('onboardingDismissed') === '1';
+    const seenThisSession = window.sessionStorage.getItem('onboardingSeen') === '1';
+    if (!dismissedPermanently && !seenThisSession) setShowOnboarding(true);
+  }, []);
+
+  const dismissOnboarding = (permanent: boolean) => {
+    setShowOnboarding(false);
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('onboardingSeen', '1');
+    if (permanent) window.localStorage.setItem('onboardingDismissed', '1');
+  };
+
   const { data, isLoading, error } = useScores(horizon, mode);
   const { data: brief, isLoading: briefLoading } = useBrief(horizon, mode);
 
@@ -81,6 +97,8 @@ export default function DashboardPage() {
   const rq = data?.run_quality ?? 'healthy';
   const qStyle = QUALITY_STYLES[rq] ?? QUALITY_STYLES.healthy;
   const banner = data?.available ? getFreshnessBanner(data.freshness_issues ?? []) : null;
+  const animatedTickerCount = useCountUp(tickerCount);
+  const animatedFc = useCountUp(fc);
 
   return (
     <main className="relative flex flex-col h-screen">
@@ -132,16 +150,19 @@ export default function DashboardPage() {
               <>
                 <span className="text-[10px] px-1.5 py-0.5 rounded"
                   style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', background: 'var(--border-subtle)' }}>
-                  {tickerCount} assets
+                  {animatedTickerCount} assets
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded"
                   style={{ fontFamily: 'var(--font-mono)', color: fc >= 80 ? 'var(--accent-etf)' : fc >= 60 ? 'var(--accent-crypto)' : 'var(--accent-danger)', background: 'var(--border-subtle)' }}
                   title={`${data.coverage?.with_price ?? 0} with price, ${data.coverage?.with_sentiment ?? 0} with sentiment, ${data.coverage?.with_fundamental_value ?? 0} with fundamentals`}>
-                  {fc}% factors
+                  {animatedFc}% factors
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1"
                   style={{ fontFamily: 'var(--font-mono)', color: qStyle.color, background: 'var(--border-subtle)' }}>
-                  <span className="w-1 h-1 rounded-full" style={{ background: qStyle.color }} />
+                  <span
+                    className={`w-1 h-1 rounded-full ${rq === 'healthy' ? 'status-dot-pulse' : ''}`}
+                    style={{ background: qStyle.color }}
+                  />
                   {qStyle.label}
                 </span>
               </>
@@ -207,6 +228,13 @@ export default function DashboardPage() {
           x: risk / y: upward probability / size: market cap / {mode}
         </span>
       </footer>
+
+      {showOnboarding && (
+        <OnboardingOverlay
+          onGotIt={() => dismissOnboarding(false)}
+          onDontShowAgain={() => dismissOnboarding(true)}
+        />
+      )}
     </main>
   );
 }
